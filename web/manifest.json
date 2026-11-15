@@ -1,0 +1,22 @@
+{
+  "manifest_version": 3,
+  "name": "Draft Bridge Web (not WhatsApp-compatible)",
+  "version": "0.2.14",
+  "description": "Capture-and-draft for chats you configure. It does not send, and it is not a WhatsApp client. Page changes reach a local native host only.",
+  "permissions": ["storage", "nativeMessaging"],
+  "host_permissions": ["https://web.whatsapp.com/*"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Draft Bridge Web"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://web.whatsapp.com/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}

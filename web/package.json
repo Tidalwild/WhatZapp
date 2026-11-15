@@ -1,0 +1,23 @@
+{
+  "name": "draft-bridge-web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check": "tsc --noEmit",
+    "test": "vitest run",
+    "build": "node scripts/build.mjs production",
+    "build:test": "node scripts/build.mjs test",
+    "test:browser": "npm run build:test && playwright test",
+    "zip": "npm run build && node scripts/zip.mjs"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.57.0",
+    "@types/chrome": "0.0.287",
+    "@types/node": "^22.15.3",
+    "esbuild": "0.25.0",
+    "happy-dom": "17.4.4",
+    "typescript": "5.8.2",
+    "vitest": "3.0.9"
+  }
+}

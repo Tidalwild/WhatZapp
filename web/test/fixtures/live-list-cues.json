@@ -1,0 +1,57 @@
+{
+  "fixture": "synthetic-redacted-chat-list",
+  "scope": "visible list structure only; no body/name values",
+  "observations": [
+    {
+      "row": "row-A",
+      "classification": "known individual anchor by task context; list cue itself unproven",
+      "roleShape": ["row", "gridcell"],
+      "rowTestIdPattern": "list-item-<position>",
+      "commonDescendantTestIds": [
+        "cell-frame-container",
+        "cell-frame-title",
+        "cell-frame-primary-detail",
+        "chat-list-timestamp",
+        "cell-frame-secondary",
+        "last-msg-status"
+      ],
+      "domImageCount": 1,
+      "accessibleImageRoleCount": 0,
+      "positiveTypeCue": null,
+      "candidateIdentityAttributesPresent": false,
+      "rowTokenUniqueInSnapshot": false,
+      "tokenMultiplicity": 4
+    },
+    {
+      "row": "row-B",
+      "classification": "unknown",
+      "roleShape": ["row", "gridcell"],
+      "rowTestIdPattern": "list-item-<position>",
+      "commonDescendantTestIds": [
+        "cell-frame-container",
+        "cell-frame-title",
+        "cell-frame-primary-detail",
+        "chat-list-timestamp",
+        "cell-frame-secondary",
+        "last-msg-status"
+      ],
+      "accessibleImageRoleCount": 3,
+      "accessibleImageNameLengthClass": "two characters each",
+      "positiveTypeCue": null,
+      "interpretation": "avatar structure alone does not establish group/person type"
+    }
+  ],
+  "listTokenSummary": {
+    "roleRowCount": 21,
+    "distinctIndexTokenCount": 17,
+    "duplicatedTokenFrequencies": [2, 4],
+    "targetTokenStableAcrossScrollOutAndBack": true,
+    "targetTokenUnique": false,
+    "reloadOrSessionStabilityTested": false
+  },
+  "typeCueSearch": {
+    "sampledRoleRows": 12,
+    "groupCommunityChannelBroadcastSelfMarkersFound": false,
+    "absenceIsNotProofOfIndividual": true
+  }
+}

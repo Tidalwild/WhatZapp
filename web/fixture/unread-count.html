@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>Synthetic numbered badge, not WhatsApp</title>
+    <style>
+      button, #box, [role="grid"], [role="row"], [role="gridcell"], span, #badge { display: block; min-width: 8px; min-height: 8px; }
+    </style>
+  </head>
+  <body>
+    <p>TEST LAYOUT — numbered unread badge. Not a WhatsApp DOM dump. The digit is an unread indicator, not a message. Placing the badge outside a trailing gridcell is a fixture choice. Live gridcell ancestry for this badge was not observed.</p>
+    <button type="button" id="contact">聯絡資料 contact-a</button>
+    <div role="textbox" id="box" contenteditable="true">輸入要傳送去「contact-a 」嘅訊息</div>
+    <div role="grid" id="live-list" aria-label="Chats">
+      <div role="row" id="row-a">
+        <span>contact-a</span>
+        <div role="gridcell" aria-label="secret-count-gridcell">secret-count-cell</div>
+        <div id="badge"></div>
+      </div>
+    </div>
+    <button id="show-1" type="button">Show count 1</button>
+    <button id="show-2" type="button">Show count 2</button>
+    <button id="same-1" type="button">Show count 1 and mount another row</button>
+    <button id="clear" type="button">Clear the badge</button>
+    <button id="mismatch" type="button">Show a mismatched badge</button>
+    <script>
+      const badge = document.querySelector("#badge");
+      const list = document.querySelector("#live-list");
+      function show(count) {
+        badge.replaceChildren();
+        const node = document.createElement("span");
+        node.setAttribute("data-testid", "icon-unread-count");
+        node.setAttribute("aria-label", String(count) + "個未讀訊息");
+        node.textContent = String(count);
+        badge.append(node);
+      }
+      function mountRow() {
+        const row = document.createElement("div");
+        row.setAttribute("role", "row");
+        row.innerHTML = '<div role="gridcell"></div><span>Sam</span>';
+        list.append(row);
+      }
+      document.querySelector("#show-1").addEventListener("click", () => show(1));
+      document.querySelector("#show-2").addEventListener("click", () => show(2));
+      document.querySelector("#same-1").addEventListener("click", () => {
+        show(1);
+        mountRow();
+      });
+      document.querySelector("#clear").addEventListener("click", () => {
+        badge.replaceChildren();
+      });
+      document.querySelector("#mismatch").addEventListener("click", () => {
+        badge.replaceChildren();
+        const node = document.createElement("span");
+        node.setAttribute("data-testid", "icon-unread-count");
+        node.setAttribute("aria-label", "1個未讀訊息");
+        node.textContent = "2";
+        badge.append(node);
+      });
+    </script>
+  </body>
+</html>

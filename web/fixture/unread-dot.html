@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>Synthetic unread dot, not WhatsApp</title>
+    <style>
+      button, #box, [role="grid"], [role="row"], [role="gridcell"], span { display: block; min-width: 8px; min-height: 8px; }
+      .clip { display: block; width: 0; height: 0; overflow: hidden; }
+    </style>
+  </head>
+  <body>
+    <p>TEST LAYOUT — empty-text unread dot. Not a WhatsApp DOM dump and not an incoming message.</p>
+    <button type="button" id="contact">
+      <span class="clip"><span class="clip" aria-label="聯絡資料 contact-a"></span></span>
+      contact-a
+    </button>
+    <div role="textbox" id="box" contenteditable="true">輸入要傳送去「contact-a 」嘅訊息</div>
+    <div role="grid" id="live-list" aria-label="Chats">
+      <div role="row" id="row-a">
+        <span>contact-a</span>
+        <div role="gridcell" aria-label="secret-dot-gridcell">secret-dot-cell</div>
+        <div role="gridcell" id="trail"></div>
+      </div>
+    </div>
+    <button id="mark" type="button">Show the synthetic dot</button>
+    <button id="mark-churn" type="button">Show the dot and mount another row</button>
+    <button id="churn" type="button">Mount another row</button>
+    <button id="clear-churn" type="button">Remove the dot and mount another row</button>
+    <script>
+      const trail = document.querySelector("#trail");
+      const list = document.querySelector("#live-list");
+      function showDot() {
+        if (trail.querySelector("[data-testid='icon-unread-count']")) return;
+        const badge = document.createElement("span");
+        badge.setAttribute("data-testid", "icon-unread-count");
+        badge.setAttribute("aria-label", "未讀");
+        badge.className = "generated-not-a-selector";
+        trail.append(badge);
+      }
+      function mountRow() {
+        const row = document.createElement("div");
+        row.setAttribute("role", "row");
+        row.innerHTML = '<div role="gridcell"></div><span>Sam</span>';
+        list.append(row);
+      }
+      document.querySelector("#mark").addEventListener("click", showDot);
+      document.querySelector("#mark-churn").addEventListener("click", () => {
+        showDot();
+        mountRow();
+      });
+      document.querySelector("#churn").addEventListener("click", mountRow);
+      document.querySelector("#clear-churn").addEventListener("click", () => {
+        const badge = trail.querySelector("[data-testid='icon-unread-count']");
+        if (badge) badge.remove();
+        mountRow();
+      });
+    </script>
+  </body>
+</html>

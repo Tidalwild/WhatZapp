@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>Synthetic open chat, not WhatsApp</title>
+    <style>
+      button, [role="textbox"], [role="grid"] { display: block; min-width: 8px; min-height: 24px; }
+      #pane, #header, #body { display: block; }
+      #messages { display: block; height: 36px; overflow-y: scroll; }
+      #messages [data-testid="msg-container"] { display: block; min-height: 40px; }
+    </style>
+  </head>
+  <body>
+    <p>TEST LAYOUT — one panel contains the header, body, messages, and composer. Not a WhatsApp DOM dump.</p>
+    <div id="pane" data-testid="conversation-panel-wrapper">
+      <div id="header" data-testid="conversation-header">
+        <button type="button" id="contact" data-testid="conversation-info-header-button">
+          <span aria-label="聯絡資料 contact-a"></span>
+          contact-a
+        </button>
+      </div>
+      <div id="body" data-testid="conversation-panel-body">
+        <div id="messages" data-testid="conversation-panel-messages">
+          <div data-testid="conv-msg-a" data-id="fix-a">
+            <div><div><div>
+              <div data-testid="msg-container">
+                <span data-testid="selectable-text">contact-a</span>
+                <span data-testid="selectable-text">fixture-alpha</span>
+                <div data-testid="msg-meta"><span>09:01</span></div>
+              </div>
+            </div></div></div>
+          </div>
+          <div data-testid="conv-msg-b" data-id="fix-b">
+            <div><div><div>
+              <div data-testid="msg-container">
+                <span data-testid="selectable-text">fixture-beta</span>
+                <div data-testid="msg-meta"><span>09:02</span></div>
+              </div>
+            </div></div></div>
+          </div>
+          <button type="button" id="phone-history">點擊此處從手機取得較舊的訊息。</button>
+          <span>星期一</span>
+          <div data-testid="conv-msg-c" data-id="fix-c">
+            <div><div><div>
+              <div data-testid="msg-container">
+                <span data-testid="selectable-text">fixture-same</span>
+                <div data-testid="msg-meta"><span>09:04</span></div>
+              </div>
+            </div></div></div>
+          </div>
+          <div data-testid="conv-msg-d" data-id="fix-d">
+            <div><div><div>
+              <div data-testid="msg-container">
+                <span data-testid="selectable-text">fixture-same</span>
+                <div data-testid="msg-meta"><span>09:04</span></div>
+              </div>
+            </div></div></div>
+          </div>
+        </div>
+      </div>
+      <div role="textbox" id="box" data-testid="conversation-compose-box-input" contenteditable="true">輸入要傳送去「contact-a 」嘅訊息</div>
+    </div>
+    <div role="grid">
+      <div role="row"><span>secret-other-chat</span></div>
+    </div>
+    <script>
+      const messages = document.getElementById("messages");
+      const pin = () => {
+        messages.scrollTop = messages.scrollHeight;
+      };
+      pin();
+      window.addEventListener("load", pin);
+      const revealOlder = () => {
+        if (messages.scrollTop > 1 || document.getElementById("older")) return;
+        const row = document.createElement("div");
+        row.id = "older";
+        row.setAttribute("data-testid", "conv-msg-older");
+        row.setAttribute("data-id", "fix-older");
+        row.innerHTML = '<div><div><div><div data-testid="msg-container"><span data-testid="selectable-text">fixture-older</span><div data-testid="msg-meta"><span>09:00</span></div></div></div></div></div>';
+        messages.insertBefore(row, messages.firstChild);
+      };
+      messages.addEventListener("scroll", revealOlder);
+      window.setInterval(revealOlder, 16);
+    </script>
+  </body>
+</html>

@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>Synthetic live-shaped list, not WhatsApp</title>
+    <style>
+      [role="grid"], [role="row"], [role="gridcell"], span { display: block; min-width: 8px; min-height: 8px; }
+    </style>
+  </head>
+  <body>
+    <p id="banner">TEST LAYOUT — reported roles only. Not a WhatsApp DOM dump and not a live wake.</p>
+    <main role="main" id="chat">
+      <h1>contact-a</h1>
+      <div role="grid" id="open-chat-grid">
+        <div role="row">
+          <div role="gridcell" aria-label="secret-main-gridcell">secret-main-text</div>
+          <span>contact-a</span>
+        </div>
+      </div>
+    </main>
+    <div role="grid" id="live-list" aria-label="Chats">
+      <div role="row" id="other">
+        <div role="gridcell" aria-label="secret-other-gridcell">secret-other-text</div>
+        <span>Sam</span>
+      </div>
+      <div role="row" id="row-a">
+        <div role="gridcell" aria-label="secret-row-gridcell">secret-row-cell-text</div>
+        <span>contact-a</span>
+        <span style="color: green" aria-label="unread"></span>
+      </div>
+    </div>
+    <button id="retitle" type="button">Change a longer cell name</button>
+    <button id="add-row" type="button">Add another synthetic row</button>
+    <script>
+      document.querySelector("#retitle").addEventListener("click", () => {
+        document.querySelector("#other [role='gridcell']").setAttribute("aria-label", "secret-changed-gridcell");
+      });
+      document.querySelector("#add-row").addEventListener("click", () => {
+        const row = document.createElement("div");
+        row.setAttribute("role", "row");
+        row.innerHTML = '<div role="gridcell" aria-label="secret-added-gridcell"></div><span>Jo</span>';
+        document.querySelector("#live-list").append(row);
+      });
+    </script>
+  </body>
+</html>

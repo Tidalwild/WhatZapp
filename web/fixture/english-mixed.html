@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>Synthetic mixed locale, not WhatsApp</title>
+    <style>
+      header, button, span, div { display: block; min-width: 8px; min-height: 8px; }
+    </style>
+  </head>
+  <body>
+    <p id="banner">TEST LAYOUT — Traditional Chinese and English labels together. Not a WhatsApp DOM dump and not a live session.</p>
+    <header>
+      <span dir="auto">contact-a</span>
+    </header>
+    <button type="button" id="contact">聯絡資料 contact-a</button>
+    <div id="zh" role="textbox" contenteditable="true" aria-label="輸入要傳送去「contact-a 」嘅訊息"></div>
+    <div id="composer" role="textbox" contenteditable="true" aria-label="Type a message to contact-a"></div>
+    <span id="body">secret-mixed-body</span>
+  </body>
+</html>

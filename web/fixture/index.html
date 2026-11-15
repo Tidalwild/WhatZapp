@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>Test layout, not WhatsApp</title>
+  </head>
+  <body>
+    <p id="banner">TEST LAYOUT — not WhatsApp and not known live markup. Synthetic fields only.</p>
+    <aside>
+      <ul>
+        <li>Other chat preview</li>
+      </ul>
+      <label>Composer <textarea id="composer">composer-secret</textarea></label>
+    </aside>
+    <main role="main" hidden>
+      <h1>Trap chat</h1>
+    </main>
+    <main role="main" id="chat">
+      <h1 id="title">fixture chat</h1>
+      <p id="status" role="status" hidden>Loading messages</p>
+      <div id="list" role="list" aria-label="Visible messages">
+        <div role="listitem" hidden>
+          <span>fixture chat</span>
+          <p>hidden-secret-row</p>
+          <time>08:00</time>
+        </div>
+        <div role="listitem" data-id="secret-id" aria-hidden="true">
+          <span>fixture chat</span>
+          <p>aria-hidden-row</p>
+          <time>08:01</time>
+        </div>
+      </div>
+    </main>
+    <section id="controls"></section>
+    <script src="fixture.js"></script>
+  </body>
+</html>

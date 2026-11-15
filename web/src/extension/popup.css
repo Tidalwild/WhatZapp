@@ -1,0 +1,74 @@
+body {
+  margin: 0;
+  width: 380px;
+  color: #1c1915;
+  background: #f6f3ec;
+  font: 14px/1.4 "Segoe UI", sans-serif;
+}
+
+main {
+  padding: 12px;
+}
+
+h1 {
+  margin: 0 0 8px;
+  font-size: 18px;
+}
+
+h2 {
+  margin: 14px 0 6px;
+  font-size: 13px;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+p, li {
+  margin: 0 0 8px;
+}
+
+label, button, input {
+  font: inherit;
+}
+
+label {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin: 0 0 8px;
+}
+
+input[type="checkbox"] {
+  margin: 0;
+}
+
+input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 6px 8px;
+  border: 1px solid #b7ad9d;
+  background: white;
+}
+
+div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+button {
+  border: 1px solid #6e624f;
+  background: #fffdf8;
+  padding: 6px 8px;
+  cursor: pointer;
+}
+
+button:focus-visible, input:focus-visible {
+  outline: 2px solid #8a5a12;
+  outline-offset: 1px;
+}
+
+ul {
+  margin: 0;
+  padding-left: 18px;
+}

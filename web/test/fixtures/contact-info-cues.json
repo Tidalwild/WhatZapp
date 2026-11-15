@@ -1,0 +1,32 @@
+{
+  "fixture": "synthetic-redacted-open-and-verify",
+  "preclassification": {
+    "stage": "chat-list",
+    "typeCue": "none observed",
+    "uniqueLocalRowToken": false
+  },
+  "openedSurface": {
+    "row": "row-A",
+    "panelTestId": "chat-info-drawer",
+    "heading": "聯絡人資料",
+    "groupInfoHeadingPresent": false,
+    "reopenControl": "header contact-info button; display-name value redacted",
+    "reopenReproducedSameShape": true
+  },
+  "identityCandidate": {
+    "explicitPhoneLabelPresent": false,
+    "phoneShapedValuePresent": true,
+    "lengthCharacters": 14,
+    "digitCount": 11,
+    "plusSign": true,
+    "punctuation": true,
+    "letters": 0,
+    "uniqueOrStableIdentityProven": false
+  },
+  "limits": {
+    "naturalPersonVsBusinessProven": false,
+    "comparisonWithOtherContact": false,
+    "groupInfoInspected": false,
+    "rawValuesStored": false
+  }
+}

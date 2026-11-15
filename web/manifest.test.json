@@ -1,0 +1,22 @@
+{
+  "manifest_version": 3,
+  "name": "Draft Bridge Web test fixture",
+  "version": "0.2.14",
+  "description": "Test build. Loads only the local synthetic fixture. Not WhatsApp and not the shipped extension.",
+  "permissions": ["storage", "nativeMessaging"],
+  "host_permissions": ["http://127.0.0.1:8766/*"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Draft Bridge Web test"
+  },
+  "content_scripts": [
+    {
+      "matches": ["http://127.0.0.1:8766/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}

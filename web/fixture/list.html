@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>Fixture list, not WhatsApp</title>
+  </head>
+  <body>
+    <p id="banner">TEST LAYOUT — not WhatsApp and not known live markup. Synthetic fields only.</p>
+    <main role="main" id="chat">
+      <h1 id="title">contact-a</h1>
+      <div id="list" role="list">
+        <div role="listitem">
+          <span>Me</span>
+          <p>seed-local</p>
+          <time>09:00</time>
+        </div>
+        <div role="listitem">
+          <span>contact-a</span>
+          <p>seed-bound</p>
+          <time>09:01</time>
+        </div>
+      </div>
+    </main>
+    <div data-bridge-list="chats">
+      <div data-bridge-row="chat" id="sam">
+        <span data-bridge-label>Sam</span>
+        <span data-bridge-preview>secret-sam-preview</span>
+      </div>
+      <div data-bridge-row="chat" id="row-a">
+        <span data-bridge-label>contact-a</span>
+        <span data-bridge-preview>secret-row-preview</span>
+      </div>
+    </div>
+    <button id="mark-unread" type="button">Mark the bound fixture row unread</button>
+    <button id="touch" type="button">Touch the same fixture row</button>
+    <script>
+      document.querySelector("#mark-unread").addEventListener("click", () => {
+        const badge = document.createElement("span");
+        badge.setAttribute("data-bridge-unread", "");
+        badge.setAttribute("aria-label", "unread");
+        document.querySelector("#row-a").append(badge);
+      });
+      document.querySelector("#touch").addEventListener("click", () => {
+        document.querySelector("#row-a").setAttribute("data-bridge-touch", "again");
+      });
+    </script>
+  </body>
+</html>

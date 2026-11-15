@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>Synthetic reported header, not WhatsApp</title>
+    <style>
+      button, [role="grid"], [role="row"], span, div { display: block; min-width: 8px; min-height: 8px; }
+    </style>
+  </head>
+  <body>
+    <p id="banner">TEST LAYOUT — reported header names only. Not a WhatsApp DOM dump.</p>
+    <div role="grid" aria-label="Chats">
+      <div role="row">
+        <div role="gridcell" aria-label="secret-gridcell-preview">secret-cell-text</div>
+        <span>contact-a</span>
+      </div>
+    </div>
+    <button type="button" id="contact">聯絡資料 contact-a</button>
+    <div id="composer" aria-placeholder="輸入要傳送去「contact-a 」嘅訊息" contenteditable="true"></div>
+    <div aria-label="聯絡資料 contact-a extra secret-longer-preview"></div>
+    <p id="profile">A+B Academy</p>
+    <span id="body">secret-message-body</span>
+  </body>
+</html>

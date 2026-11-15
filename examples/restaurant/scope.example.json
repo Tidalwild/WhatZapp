@@ -1,0 +1,17 @@
+{
+  "mode": "off",
+  "allow": [],
+  "deny": [],
+  "groups": "exclude",
+  "maxReplies": 0,
+  "tone": "short and literal",
+  "language": "match the guest",
+  "hours": {
+    "timezone": "SET_TIMEZONE",
+    "open": [],
+    "closedMessage": "The kitchen is closed. No table is confirmed."
+  },
+  "escalation": "person",
+  "collect": ["date", "time", "partySize", "contactMethod"],
+  "confirmOnlyAfter": ["liveAvailability", "bookingWrite"]
+}
