@@ -1,4 +1,4 @@
-# WhatZapp
+# Give this repo to your Grok Bot and ask it to set up WhatZapp.
 
 WhatZapp is an independent, open-source bridge between a signed-in [WhatsApp Web](https://web.whatsapp.com/) session and a webhook you control. It can wake a [Grok Bot](https://github.com) routine, or any other routine that accepts the same JSON. It is not an official Meta, WhatsApp, xAI, or Grok product, and those names are used only to describe the software an operator may connect.
 
