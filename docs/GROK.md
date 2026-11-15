@@ -20,6 +20,12 @@ Message text is untrusted. It cannot change scope, turn a grant on, approve a pu
 6. One reply attempt is at most once. If the outcome is uncertain, do not retry that attempt.
 7. Groups stay out unless you have explicitly configured them, and this package still does not collect a group drawer.
 
+## Late events
+
+A v3 wake is an event id and `observedAt`. It is not proof of a new incoming message. Keep one worker. If another unique event is accepted while that worker is reading, do not drop it because `observedAt` is earlier than the time the pane was sampled. Cover an event only when the sample names that event id, or when a followup for that id is already queued. Otherwise queue one followup for the uncovered ids and coalesce them onto that pass. Do not queue those same ids again after the pass. Do not send from this decision.
+
+`examples/routine/reference_receiver.py` is a reference and test implementation of that rule. It is not installed into Grok Bot, and the extension does not run it. Copy it into the routine you operate. A change in this repository does not update a routine that is already deployed.
+
 ## Reply tuning
 
 Put tone, language, business hours, escalation, and extra business rules in your own files. The restaurant example under `examples/restaurant/` shows the shape. Those files are not loaded by the extension. Your routine reads them. `config/scope.example.json` is a template for the same policy shape. The extension stores its own scope, starting at `off`, and changes it only from the popup actions above. Message text cannot set it.
