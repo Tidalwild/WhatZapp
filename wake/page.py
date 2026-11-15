@@ -39,8 +39,6 @@ from wake.read import (
     load_binding,
     preview_tail,
     read_snapshot,
-    _append_draft,
-    _draft,
     _write,
 )
 
@@ -80,6 +78,7 @@ def _tail(directory: Path, snapshot, allowlist: str, pipeline) -> dict:
         signal="open-tail",
         posted=True,
         draft=bool(drafted["draft"]),
+        ack=str(drafted.get("ack") or ""),
     )
 
 
@@ -135,12 +134,15 @@ def _list(directory: Path, snapshot, allowlist: str, pipeline) -> dict:
         if not posted:
             return _public("WAKE_NOT_ACKED", signal="chat-list", posted=True)
         _save_list(directory, binding["localScopeId"], position, True)
-        draft = _draft(event_id, binding["localScopeId"])
-        draft["source"] = "web-page-change"
-        draft["signal"] = "chat-list"
-        draft["readsChat"] = False
-        _append_draft(directory, draft)
-        return _public("ONE_UNREAD", signal="chat-list", posted=True, draft=True)
+        item = pipeline.outbox.items.get(event_id)
+        return _public(
+            "ONE_UNREAD",
+            signal="chat-list",
+            posted=True,
+            draft=bool(item is not None and item.draft),
+            ack="" if item is None or item.draft else str(item.reason or ""),
+            event=event_id or "",
+        )
     if position != state["position"] or unread != state["unread"]:
         _save_list(directory, binding["localScopeId"], position, unread)
         if not unread and state["unread"]:
@@ -452,6 +454,7 @@ def _public(
     signal: str = "",
     posted: bool = False,
     draft: bool = False,
+    ack: str = "",
     forward: str = "none",
     event: str = "",
 ) -> dict:
@@ -459,11 +462,14 @@ def _public(
         forward = "none"
     if not isinstance(event, str):
         event = ""
+    if not isinstance(ack, str):
+        ack = ""
     return {
         "disposition": disposition,
         "signal": signal,
         "posted": posted,
         "draft": draft,
+        "ack": ack,
         "forward": forward,
         "event": event,
         "verifiedRemoteRecipient": False,

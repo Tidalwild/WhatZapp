@@ -12,24 +12,41 @@ from wake.pipeline import Pipeline
 
 
 class PipelineTests(unittest.TestCase):
-    def test_accepts_allowlist_and_drafts_without_sending(self):
-        made, _clock, log, transport = pipeline(self._dir())
+    def test_official_ack_stores_transport_status_and_no_mock_draft(self):
+        directory = self._dir()
+        transport = Scripted([(200, b'{"reply":"model-text-991","accepted":true}')])
+        made, _clock, log, transport = pipeline(directory, transport=transport)
         result = made.handle(observation())
         self.assertEqual(result.disposition, "enqueued")
         made.flush()
         item = made.outbox.items[result.event_id]
         self.assertEqual(item.state, "acked")
-        self.assertEqual(item.draft["handler"], "local-mock-handler")
-        self.assertFalse(item.draft["sendingEnabled"])
-        self.assertFalse(item.draft["sent"])
-        self.assertFalse(item.draft["verifiedRemoteRecipient"])
-        self.assertFalse(item.draft["readsChat"])
+        self.assertEqual(item.reason, "transport-accepted")
+        self.assertIsNone(item.draft)
+        saved = (directory / "outbox.json").read_text(encoding="utf-8")
+        self.assertNotIn("LOCAL MOCK", saved)
+        self.assertNotIn("local-mock-handler", saved)
+        self.assertNotIn("model-text-991", saved)
         body = json.loads(transport.calls[0]["body"])
         self.assertEqual(body["source"], "linux-session-notify")
         self.assertEqual(body["conversationScope"], "contact-a")
         self.assertNotIn("WhatsApp", json.dumps(body))
         self.assertNotIn("summary", body)
         self.assertNotIn("CANARY", log.text())
+
+    def test_test_receipt_keeps_a_labelled_mock_fixture(self):
+        made, _clock, _log, _transport = pipeline(self._dir(), mode="test-receipt")
+        result = made.handle(observation())
+        made.flush()
+        item = made.outbox.items[result.event_id]
+        self.assertEqual(item.reason, "acked")
+        self.assertEqual(item.draft["handler"], "local-mock-handler")
+        self.assertEqual(item.draft["placeholder"], "LOCAL MOCK")
+        self.assertFalse(item.draft["sendingEnabled"])
+        self.assertFalse(item.draft["sent"])
+        self.assertFalse(item.draft["verifiedRemoteRecipient"])
+        self.assertFalse(item.draft["readsChat"])
+        self.assertFalse(item.draft["sendsWhatsApp"])
 
     def test_wrong_chat_missing_identity_and_injection_do_not_send(self):
         made, _clock, _log, transport = pipeline(self._dir())

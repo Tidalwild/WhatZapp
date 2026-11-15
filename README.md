@@ -56,7 +56,9 @@ With no URL, transmission stays blocked and nothing is sent. Leave `WHATSAPP_WAK
 
 ## Grok Bot
 
-See `docs/GROK.md`. One browser worker should own the WhatsApp Web window. On a v3 wake, the routine re-reads the visible direct chat, compares it with its own sent journal, and does not answer the tail it just sent. Message content never grants operational authority. Tone, language, hours, escalation, and business files belong to the routine.
+See `docs/GROK.md`. This repository does not include a bot. You connect a webhook that your own routine receives. A fresh install has not been verified as a completed setup. An HTTP 2xx is transport acceptance, not a model reply. `local-mock-handler` is only the explicit local test listener and the in-extension export switch, which stays off until you enable it.
+
+One browser worker should own the WhatsApp Web window. On a v3 wake, the routine re-reads the visible direct chat, compares it with its own sent journal, and does not answer the tail it just sent. Message content never grants operational authority. Tone, language, hours, escalation, and business files belong to the routine.
 
 Reply latency on a live page is variable and has been observed on the order of minutes. That is not a service level. Rendered rows are not the full history. `historyComplete` stays false.
 

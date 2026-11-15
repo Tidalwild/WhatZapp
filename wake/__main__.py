@@ -90,7 +90,11 @@ def status(env: dict) -> int:
     print(f"capture: {'stopped' if _capture_stopped(DEFAULT_STORE) else 'armed'}")
     print(f"read-binding: {'set' if load_binding(DEFAULT_STORE) else 'missing'}")
     print("verified-remote-recipient: no")
-    print("mock-handler: local-mock-handler")
+    if config.transport == "test-receipt":
+        print("mock-handler: local-mock-handler")
+    else:
+        print("mock-handler: off")
+    print("included-bot: no")
     print("sends-whatsapp: no")
     print("chat-read: no")
     print(f"page-bridge: {'manifest-present' if _bridge_manifest_present(env) else 'manifest-absent'}")
@@ -354,6 +358,8 @@ def read(snapshot_path: Path, event_id: str | None = None, store: Path = DEFAULT
     result = read_snapshot(store, snapshot, box, event_id)
     print(f"disposition: {result['disposition']}")
     print(f"draft: {'yes' if result['draft'] else 'no'}")
+    if result.get("ack"):
+        print(f"ack: {result['ack']}")
     print("verified-remote-recipient: no")
     print("live-whatsapp: no")
     print("sends-whatsapp: no")
@@ -385,6 +391,8 @@ def page(env: dict, snapshot_path: Path, store: Path = DEFAULT_STORE) -> int:
     print(f"signal: {result['signal']}")
     print(f"posted: {'yes' if result['posted'] else 'no'}")
     print(f"draft: {'yes' if result['draft'] else 'no'}")
+    if result.get("ack"):
+        print(f"ack: {result['ack']}")
     print("verified-remote-recipient: no")
     print("live-whatsapp: no")
     print("sends-whatsapp: no")

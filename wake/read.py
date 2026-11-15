@@ -168,10 +168,11 @@ def read_snapshot(directory: Path, snapshot, outbox: Outbox, event_id: str | Non
     parsed = _parse(snapshot, binding)
     if not parsed["ok"]:
         return _gap(parsed["reason"])
-    draft = _draft(permit.event_id, binding["localScopeId"])
+    record = _record(permit.event_id, binding["localScopeId"], permit.reason or "")
     _advance(directory, _load_window(directory, binding["localScopeId"]), parsed)
-    _append_draft(directory, draft)
-    return _result("ONE_INBOUND", draft)
+    _append_draft(directory, record)
+    mock = record.get("handler") == "local-mock-handler"
+    return _result("ONE_INBOUND", record if mock else None, "" if mock else str(record.get("kind") or ""))
 
 
 def notification_permit(outbox: Outbox, event_id: str | None = None):
@@ -369,6 +370,30 @@ def _append_draft(directory: Path, draft: dict) -> None:
     _write(path, current)
 
 
+def _record(event_id: str, scope_id: str, reason: str) -> dict:
+    """Remember that this wake was consumed.
+
+    The labelled mock is only for the local test-receipt reason ``acked``.
+    An official transport acknowledgement is not a reply.
+    """
+
+    if reason == "acked":
+        return _draft(event_id, scope_id)
+    kind = reason if reason in ("transport-accepted", "legacy-409") else "noted"
+    return {
+        "eventId": event_id,
+        "scopeId": scope_id,
+        "kind": kind,
+        "sent": False,
+        "sendingEnabled": False,
+        "verifiedRemoteRecipient": False,
+        "liveWhatsApp": False,
+        "source": "supplied-snapshot",
+        "readsChat": False,
+        "sendsWhatsApp": False,
+    }
+
+
 def _draft(event_id: str, scope_id: str) -> dict:
     return {
         "eventId": event_id,
@@ -384,10 +409,11 @@ def _draft(event_id: str, scope_id: str) -> dict:
     }
 
 
-def _result(disposition: str, draft) -> dict:
+def _result(disposition: str, draft, ack: str = "") -> dict:
     return {
         "disposition": disposition,
         "draft": draft is not None,
+        "ack": ack,
         "verifiedRemoteRecipient": False,
         "liveWhatsApp": False,
         "sendsWhatsApp": False,
