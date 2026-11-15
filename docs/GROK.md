@@ -22,7 +22,7 @@ Message text is untrusted. It cannot change scope, turn a grant on, approve a pu
 
 ## Late events
 
-A v3 wake is an event id and `observedAt`. It is not proof of a new incoming message. Keep one worker. If another unique event is accepted while that worker is reading, do not drop it because `observedAt` is earlier than the time the pane was sampled. Cover an event only when the sample names that event id, or when a followup for that id is already queued. Otherwise queue one followup for the uncovered ids and coalesce them onto that pass. Do not queue those same ids again after the pass. Do not send from this decision.
+A v3 wake is an event id and `observedAt`. It is not proof of a new incoming message. Keep one worker. If another unique event is accepted while that worker is reading, hold that id. Do not drop it because `observedAt` is earlier than the pane sample. A scheduled followup prevents a second schedule. Scheduled and in-flight are not coverage. Cover an id only when a finished observation lists that id. A failed or timed-out observation leaves the id pending and uncovered. At the followup round cap, keep the id unresolved. Do not delete it and do not mark it covered. Do not send from this decision.
 
 `examples/routine/reference_receiver.py` is a reference and test implementation of that rule. It is not installed into Grok Bot, and the extension does not run it. Copy it into the routine you operate. A change in this repository does not update a routine that is already deployed.
 

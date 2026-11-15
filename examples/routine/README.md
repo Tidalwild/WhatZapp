@@ -10,10 +10,8 @@ Keep one worker on the WhatsApp Web window. Pass each new event id to the same r
 
 ## Late events
 
-An event observed while the worker was busy still needs a followup when all of these are true:
+An event observed while the worker was busy stays pending. `observedAt` earlier than the sample clock does not cover it. An incomplete tail that reports no new turn does not cover it either.
 
-- the event id has not been seen before
-- the finished sample did not name that event id
-- no followup is already queued for that event id
+Queue one followup for the pending ids. That schedule blocks a second schedule. The ids remain scheduled, not covered. Starting the followup makes them in flight, still not covered. Cover an id only when the finished observation lists it.
 
-`observedAt` earlier than the sample clock is not one of those facts. An incomplete tail that reports no new turn does not cover the held event. Queue one followup and put every such id on it. Do not start a second worker. After that followup is read, do not queue those same ids again. A later new id can join a new followup until two followup rounds have been used; further ids stay uncapped rather than marked covered. The wake itself is not a new incoming message. This example never sends.
+If that observation fails or times out, put the ids back to pending. Do not mark them covered and do not delete them. A later schedule may try once more. After two followup rounds, further ids stay unresolved: they remain stored, and they are not covered. Do not start a second worker. The wake itself is not a new incoming message. This example never sends.
