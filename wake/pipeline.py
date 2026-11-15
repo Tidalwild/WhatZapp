@@ -228,7 +228,12 @@ class Pipeline:
                 item.state = "acked"
                 item.acked_at = self.outbox.clock.now()
                 item.reason = _stored_reason(result)
-                item.draft = _draft(item.event_id)
+                # A 2xx on the official transport is not a reply. The labelled
+                # fixture is only the explicit local test-receipt contract.
+                if result.classification in ("receipt", "receipt-duplicate"):
+                    item.draft = _draft(item.event_id)
+                else:
+                    item.draft = None
                 fields = {
                     "eventId": item.event_id,
                     "state": "acked",
@@ -289,6 +294,8 @@ def _stored_reason(result) -> str:
 
 
 def _draft(event_id: str) -> dict:
+    """Local test-receipt fixture. Not stored for an official transport ack."""
+
     return {
         "eventId": event_id,
         "handler": "local-mock-handler",

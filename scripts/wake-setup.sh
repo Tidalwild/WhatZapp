@@ -52,10 +52,12 @@ metadata envelope. It does not read a chat.
    python3 -m wake read --snapshot baseline.json
    python3 -m wake read --snapshot next.json
    next.json must be the probe-contract snapshot of that same open chat.
-   A draft is prepared only for exactly one unambiguous new inbound row.
-   Duplicate clocks, weekday clocks, and a connectivity probe do not draft.
-   The extension is not installed by these commands. A page mutation is not
-   a notification.
+   Exactly one unambiguous new inbound row is recorded. On the default
+   official transport that record is a transport acknowledgement, not a
+   mock reply. Duplicate clocks, weekday clocks, and a connectivity probe
+   do not record one. The extension is not installed by these commands.
+   A page mutation is not a notification.
 
-Sending to WhatsApp stays off. The local mock handler is local-mock-handler.
+Sending to WhatsApp stays off. This package does not include a bot.
+local-mock-handler is only python3 -m wake routine and the export switch.
 EOF

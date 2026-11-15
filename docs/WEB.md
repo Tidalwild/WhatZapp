@@ -52,7 +52,7 @@ The web engine is a TypeScript reimplementation of the tested intent, not a comp
 | Logs | Allowlisted keys, no message text | Same |
 | History | Always incomplete | Always incomplete |
 
-Inbound text is untrusted data. It cannot change onboarding, collection, export, or the binding. The mock draft body is a fixed placeholder that does not copy the message. Logs drop message text, labels, and the HMAC secret.
+Inbound text is untrusted data. It cannot change onboarding, collection, export, or the binding. The mock draft body is a fixed placeholder that does not copy the message. It is shown only after the export switch is turned on. An official webhook 2xx does not create that draft and is not a model response. Logs drop message text, labels, and the HMAC secret.
 
 ## How to run
 

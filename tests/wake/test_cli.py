@@ -66,6 +66,10 @@ class CliTests(unittest.TestCase):
             self.assertIn("desktop-bus: absent", text)
             self.assertIn("notifications-service: unavailable", text)
         self.assertIn("sends-whatsapp: no", text)
+        self.assertIn("mock-handler: off", text)
+        self.assertIn("included-bot: no", text)
+        self.assertNotIn("local-mock-handler", text)
+        self.assertNotIn("LOCAL MOCK", text)
         self.assertNotIn("manual-connectivity-probe", text)
         address = env.get("DBUS_SESSION_BUS_ADDRESS") or ""
         if address:
@@ -90,10 +94,23 @@ class CliTests(unittest.TestCase):
         text = buffer.getvalue()
         self.assertEqual(code, 0)
         self.assertIn("transmission: configured", text)
+        self.assertIn("mock-handler: off", text)
+        self.assertIn("included-bot: no", text)
+        self.assertNotIn("LOCAL MOCK", text)
         self.assertNotIn(secret_url, text)
         self.assertNotIn(secret, text)
         self.assertNotIn("contact-a", text)
         self.assertIn("wake-wire: v1", text)
+        labelled = dict(env, WHATSAPP_WAKE_TRANSPORT="test-receipt")
+        labelled_buffer = StringIO()
+        with redirect_stdout(labelled_buffer):
+            labelled_code = status(labelled)
+        labelled_text = labelled_buffer.getvalue()
+        self.assertEqual(labelled_code, 0)
+        self.assertIn("mock-handler: local-mock-handler", labelled_text)
+        self.assertIn("included-bot: no", labelled_text)
+        self.assertNotIn(secret_url, labelled_text)
+        self.assertNotIn(secret, labelled_text)
 
     def test_probe_against_local_routine_is_not_a_live_wake(self):
         directory = Path("/tmp/wake-cli-probe")

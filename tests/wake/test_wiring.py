@@ -290,17 +290,29 @@ class WiringTests(unittest.TestCase):
         self.assertEqual(switched["disposition"], "CHAT_SWITCH")
         drafted = read_snapshot(directory, _shot(_SEEDS + (("fixture chat", MARKER, "09:02"),)), made.outbox)
         self.assertEqual(drafted["disposition"], "ONE_INBOUND")
-        self.assertTrue(drafted["draft"])
+        self.assertFalse(drafted["draft"])
+        self.assertEqual(drafted["ack"], "transport-accepted")
         self.assertFalse(drafted["verifiedRemoteRecipient"])
         self.assertFalse(drafted["liveWhatsApp"])
         saved = json.loads((directory / "read-drafts.json").read_text(encoding="utf-8"))["drafts"]
         self.assertEqual(len(saved), 1)
+        self.assertEqual(saved[0]["kind"], "transport-accepted")
+        self.assertNotIn("handler", saved[0])
+        self.assertNotIn("placeholder", saved[0])
         self.assertFalse(saved[0]["sent"])
         self.assertFalse(saved[0]["sendingEnabled"])
         self.assertFalse(saved[0]["verifiedRemoteRecipient"])
         self.assertEqual(saved[0]["source"], "supplied-snapshot")
+        again = read_snapshot(
+            directory,
+            _shot(_SEEDS + (("fixture chat", MARKER, "09:02"), ("fixture chat", "later-text", "09:04"))),
+            made.outbox,
+        )
+        self.assertEqual(again["disposition"], "ALREADY_DRAFTED")
+        self.assertFalse(again["draft"])
+        self.assertEqual(len(json.loads((directory / "read-drafts.json").read_text(encoding="utf-8"))["drafts"]), 1)
         blob = _tree(directory)
-        for secret in (MARKER, "one-text", "other-text", "first-new", "second-new", "seed-one"):
+        for secret in (MARKER, "one-text", "other-text", "first-new", "second-new", "later-text", "seed-one", "LOCAL MOCK"):
             self.assertNotIn(secret, blob)
 
     def test_connectivity_probe_does_not_authorize_a_read(self):

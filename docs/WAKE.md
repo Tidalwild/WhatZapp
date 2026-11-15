@@ -12,7 +12,7 @@ Leave `WHATSAPP_WAKE_WIRE` unset until you choose one. Any other value stays on 
 
 `whatsapp-wake-test-v3` is the targetless list wake. Its exact keys are `field`, `eventId`, `source`, `observedAt`, and `testOnly`. `source` is `list-change`. It has no chat, name, count, phone, or scope. Set `WHATSAPP_WAKE_WIRE=list` to post it. The same wire also posts one event when a new tail appears in an open direct-contact pane, because the unread badge does not move while that chat is open. The composer going empty does not identify an own reply, so that sample still posts one hint when the tail grew. A rebuilt tail, a context change, and a group drawer do not post. One unacked v3 item keeps a newer generation and posts it once the earlier item is acknowledged. A repeated generation does not post again. The hint is not incoming proof.
 
-A 2xx is `transport-accepted`. The body is not read. It is not a chat receipt and not exactly-once. HTTP 409 is the legacy stop, labeled `legacy-409`. `WHATSAPP_WAKE_TRANSPORT=test-receipt` is only for the local `wake/routine.py` test server. Leave it unset for a real webhook.
+A 2xx is `transport-accepted`. The body is not read. It is not a chat receipt, not a model reply, and not exactly-once. The official path does not store a mock draft for that acknowledgement. HTTP 409 is the legacy stop, labeled `legacy-409`. `WHATSAPP_WAKE_TRANSPORT=test-receipt` is only for the local `wake/routine.py` test server, which keeps the labelled `local-mock-handler` fixture. Leave the transport unset for a real webhook.
 
 ## Contact surface
 
