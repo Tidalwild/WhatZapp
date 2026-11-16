@@ -57,6 +57,14 @@ describe("open chat read", () => {
     expect(container?.querySelector('[data-testid="selectable-text"]')?.getAttribute("data-id")).toBeNull();
   });
 
+  it("returns message keys for a delta and does not put the text in those keys", async () => {
+    const doc = page(frame(message("wrap-1", "fixture-alpha")));
+    const report = await collectOpenChat(doc, "contact-a", { requireLayout: false }, { maxScrolls: 0 });
+    expect(report.coverage.keyIds).toEqual(["wrap-1"]);
+    expect(report.coverage.keyIds.join(" ")).not.toContain("fixture-alpha");
+    expect(report.rows[0]?.direction).toBe("unknown");
+  });
+
   it("keeps two ids that share a timestamp and text", () => {
     const doc = page(frame(message("occ-a", "fixture-same", "09:04") + message("occ-b", "fixture-same", "09:04")));
     const sample = sampleOpenChat(doc, "contact-a", { requireLayout: false });

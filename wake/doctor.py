@@ -13,7 +13,10 @@ from pathlib import Path
 from wake import __version__
 from wake.bridge import read_handshake, read_host
 from wake.config import load_config, valid_url
+from wake.approval import line as approval_line
 from wake.composer import composer_event, composer_state
+from wake.context import describe as context_describe
+from wake.trace import format_report
 from wake.evidence import CONTRACT
 from wake.ledger import summary as late_summary
 from wake.recovery import (
@@ -30,7 +33,9 @@ from wake.setupcheck import _extension_version, _send_armed
 RUNTIME_NAMES = (
     "STOP",
     "binding.json",
+    "approval.json",
     "composer-sample.json",
+    "context-policy.json",
     "drafts.json",
     "event-ids.json",
     "event-ledger.json",
@@ -48,6 +53,7 @@ RUNTIME_NAMES = (
     "read-drafts.json",
     "read-window.json",
     "receipts.jsonl",
+    "stage-note.json",
 )
 
 
@@ -85,6 +91,10 @@ def diagnose(env: dict, store: Path, root: Path, loaded_extension: str = "", res
         f"composer: {composer_state(store)}",
         f"composer-event: {composer_event(store)}",
         "response-absence: not-inability",
+        *format_report(store),
+        f"context: {context_describe(store, _now())}",
+        f"approval: {approval_line(store, _now())}",
+        "send-reconcile: not-sent",
         f"correlation: {_correlation(store)}",
         f"approved-delivery: {'blocked-send-armed' if armed == 'true' else 'disabled'}",
         f"live-send-armed: {armed}",
@@ -170,6 +180,10 @@ def drop_local_state(store: Path) -> list:
         if unlink_regular(path):
             removed.append(name)
     return removed
+
+
+def _now() -> int:
+    return int(datetime.now(timezone.utc).timestamp())
 
 
 def _sample_at(store: Path, host_live: str) -> str:

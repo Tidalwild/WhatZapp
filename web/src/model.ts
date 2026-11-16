@@ -1,7 +1,9 @@
 import type { ContactScope } from "./contactScope.js";
 import { DEFAULT_SCOPE } from "./contactScope.js";
+import type { ContextGrant } from "./contextPolicy.js";
 import type { DeliveryRecord } from "./replyDelivery.js";
 import type { IdentityEnrollment } from "./identityEnrollment.js";
+import type { Approval } from "./sendAuthority.js";
 
 export const HANDLER = "local-mock-handler";
 export const HISTORY_COMPLETE = false;
@@ -117,6 +119,8 @@ export type State = {
   scope: ContactScope;
   identity: IdentityEnrollment;
   deliveryRecords: DeliveryRecord[];
+  context: ContextGrant;
+  approval: Approval;
   historyComplete: false;
   keyMaterial: string;
   counters: Counters;
@@ -140,6 +144,8 @@ export type PublicView = {
   scope: ContactScope;
   identityStatus: "unenrolled" | "self-chat" | "enrolled";
   deliveryEnabled: false;
+  contextEnabled: boolean;
+  approvalPhase: "none" | "approved" | "ambiguous" | "failed";
   baselineEstablished: boolean;
   messages: Array<Pick<StoredMessage, "eventId" | "scopeId" | "sender" | "text" | "timeText" | "capturedAtMillis" | "purged">>;
   gaps: Gap[];

@@ -83,7 +83,7 @@ describe("send surface", () => {
     expect(JSON.stringify(rowStatus(outgoing.querySelector('[data-testid="msg-container"]') as Element))).not.toContain("private-body");
   });
 
-  it("counts the pair inside the open panel and does not call the other rows incoming", () => {
+  it("counts the pair inside the open panel and does not call the other rows incoming", async () => {
     const doc = page(`
       <div data-testid="conversation-panel-wrapper">
         <button type="button"><span aria-label="${HEADER}"></span>contact-a</button>
@@ -115,7 +115,7 @@ describe("send surface", () => {
     });
     expect(mixed.blocked).not.toContain("OUTGOING_EXCLUDED");
     expect(mixed.blocked).toContain("DIRECTION_UNPROVEN");
-    const refused = engine.attemptLiveDelivery("hello", surface);
+    const refused = await engine.attemptLiveDelivery("hello", surface);
     expect(refused.blocked).not.toContain("OUTGOING_EXCLUDED");
     expect(refused.persisted).toBe(false);
     expect(refused.acted).toBe(false);
@@ -138,7 +138,7 @@ describe("send surface", () => {
     expect(forgedOutgoing.exclusion).toEqual({ excluded: 2, quoteStructure: 0, unproven: 0 });
   });
 
-  it("does not persist when the measured surface still lacks identity and direction", () => {
+  it("does not persist when the measured surface still lacks identity and direction", async () => {
     let n = 0;
     const engine = new Engine({ now: () => 10, ids: () => `id-${n += 1}`, secretHex: "ab".repeat(32) });
     engine.acceptOnboarding(true);
@@ -151,7 +151,7 @@ describe("send surface", () => {
         <div data-testid="msg-container"><span data-testid="selectable-text">contact-a</span></div>
       </div>
     `));
-    const result = engine.attemptLiveDelivery("do not send", readSendSurface(doc, "contact-a", { requireLayout: false }));
+    const result = await engine.attemptLiveDelivery("do not send", readSendSurface(doc, "contact-a", { requireLayout: false }));
     expect(result.reason).toBe("EVIDENCE_NOT_MEASURED");
     expect(result.blocked).toEqual(expect.arrayContaining([
       "IDENTITY_UNPROVEN",
@@ -165,7 +165,7 @@ describe("send surface", () => {
     expect(engine.dump().deliveryRecords).toEqual([]);
   });
 
-  it("records a quote of an earlier outgoing marker as structure, not incoming", () => {
+  it("records a quote of an earlier outgoing marker as structure, not incoming", async () => {
     const marker = CALIBRATION_OUTGOING_MARKER;
     const outgoing = `<div data-testid="msg-container"><span data-testid="selectable-text">${marker}</span><span data-testid="tail-out"></span><span role="img" aria-label="name-read-xx"></span><span aria-label="已讀"></span></div>`;
     const quoting = `<div data-testid="msg-container"><div data-testid="quoted-message"><span data-testid="selectable-text">${marker}</span></div><button type="button">${marker}</button><button type="button" aria-label="引用甲乙"></button><span data-testid="tail-in"></span></div>`;
@@ -206,7 +206,7 @@ describe("send surface", () => {
     expect(decision.blocked).toContain("DIRECTION_UNPROVEN");
     expect(decision.blocked).toContain("STABLE_ID_NOT_DIRECTION");
     expect(decision.delivered).toBe(false);
-    const delivery = engine.attemptLiveDelivery("hello", surface);
+    const delivery = await engine.attemptLiveDelivery("hello", surface);
     expect(delivery.blocked).toContain("DIRECTION_UNPROVEN");
     expect(delivery.blocked).toContain("IDENTITY_UNPROVEN");
     expect(delivery.blocked).toContain("LIVE_SEND_CLOSED");
@@ -218,7 +218,7 @@ describe("send surface", () => {
     expect(engine.dump().deliveryRecords).toEqual([]);
   });
 
-  it("keeps an own quote unproven across status, virtualization, mixed rows, and a changed pane", () => {
+  it("keeps an own quote unproven across status, virtualization, mixed rows, and a changed pane", async () => {
     const marker = CALIBRATION_OUTGOING_MARKER;
     const outgoing = `<div data-testid="msg-container"><span data-testid="selectable-text">${marker}</span><span role="img" aria-label="name-read-xx"></span><span aria-label="已讀"></span></div>`;
     const quote = (status: string) =>
@@ -295,7 +295,7 @@ describe("send surface", () => {
     expect(coverageOnly.blocked).not.toContain("QUOTE_NOT_DIRECTION");
     expect(coverageOnly.blocked).toContain("DIRECTION_UNPROVEN");
     expect(coverageOnly.blocked).not.toContain("BINDING_MISMATCH");
-    const delivery = engine.attemptLiveDelivery("hello", readSendSurface(mounted, "contact-a", { requireLayout: false }));
+    const delivery = await engine.attemptLiveDelivery("hello", readSendSurface(mounted, "contact-a", { requireLayout: false }));
     expect(delivery.blocked).toContain("DIRECTION_UNPROVEN");
     expect(delivery.blocked).toContain("LIVE_SEND_CLOSED");
     expect(delivery.persisted).toBe(false);

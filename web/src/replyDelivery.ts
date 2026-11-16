@@ -78,6 +78,7 @@ export type DeliveryRequest = {
   allowFixture: boolean;
   untrustedText: string;
   scope: ContactScope;
+  authorityReason?: string;
 };
 
 export type DeliveryResult = {
@@ -136,6 +137,7 @@ export function commitDelivery(request: DeliveryRequest): DeliveryResult {
   if (send.composer === "unmeasured") block("COMPOSER_UNMEASURED");
   if (!request.actuator.wired) block("ACTUATOR_NOT_WIRED");
   if (!/^[A-Za-z0-9._:-]{1,80}$/.test(request.attemptId)) block("ATTEMPT_ID_UNUSABLE");
+  if (request.authorityReason && request.authorityReason !== "") block(request.authorityReason);
 
   const key = blocked.length === 0 ? `${send.grantScopeId}/${request.attemptId}` : "";
   if (blocked.length > 0) return refused(blocked);

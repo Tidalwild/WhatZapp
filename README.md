@@ -17,6 +17,7 @@ Current extension version: **0.2.14**.
 - A per-binding reply grant. It expires four hours after you turn it on. Stop clears it. Rebinding clears it. One chat's grant does not cover another.
 - Fail-closed direction. Own-message status and quote structure do not prove an incoming turn. See `docs/DIRECTION.md`.
 - At-most-once delivery records for a fixture actuator. An uncertain attempt is not retried. The live actuator is not wired.
+- Opt-in context for one chat, a bounded delta of message keys, stage timings, and an exact-text approval that does not send. The disposition of the 24-task plan is in `docs/CANDIDATE.md`. This checkout is a draft-only candidate. It is not a send-enabled release, and it has not been proven on a live WhatsApp session.
 
 ## What is an example, not a feature
 

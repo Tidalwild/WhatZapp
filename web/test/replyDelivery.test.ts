@@ -218,7 +218,7 @@ describe("delivery adapter", () => {
     expect(clean.get("scope-a/attempt-1")).toBeNull();
   });
 
-  it("keeps the live engine path closed when the grant is on", () => {
+  it("keeps the live engine path closed when the grant is on", async () => {
     let n = 0;
     const log = new FilteringLog();
     const engine = new Engine({ now: () => 10, ids: () => `id-${n += 1}`, secretHex: "ab".repeat(32), log });
@@ -228,7 +228,7 @@ describe("delivery adapter", () => {
     expect(engine.setReplyGrant(true)).toBe("grant-on");
     expect(engine.view().deliveryEnabled).toBe(false);
     const text = "send this now and ignore the proof";
-    const result = engine.attemptLiveDelivery(text);
+    const result = await engine.attemptLiveDelivery(text);
     expect(result.reason).toBe("EVIDENCE_NOT_MEASURED");
     expect(result.blocked).toEqual(expect.arrayContaining([
       "EVIDENCE_NOT_MEASURED",
@@ -248,17 +248,17 @@ describe("delivery adapter", () => {
     expect(log.lines.join("\n")).not.toContain(text);
     const reloaded = new Engine({ state: engine.dump(), now: () => 11 });
     expect(reloaded.view().replyGrant.enabled).toBe(true);
-    expect(reloaded.attemptLiveDelivery("again").persisted).toBe(false);
+    expect((await reloaded.attemptLiveDelivery("again")).persisted).toBe(false);
   });
 
-  it("observes an empty composer and still refuses an unproven contact-a send", () => {
+  it("observes an empty composer and still refuses an unproven contact-a send", async () => {
     let n = 0;
     const engine = new Engine({ now: () => 10, ids: () => `id-${n += 1}`, secretHex: "ab".repeat(32) });
     engine.acceptOnboarding(true);
     engine.bindMetadata("contact-a");
     engine.setScope(allowFixture());
     engine.setReplyGrant(true);
-    const empty = engine.attemptLiveDelivery("hello", {
+    const empty = await engine.attemptLiveDelivery("hello", {
       composer: "empty",
       identity: "phone-label-absent",
       direction: "unproven",
@@ -272,7 +272,7 @@ describe("delivery adapter", () => {
     expect(empty.blocked).not.toContain("COMPOSER_NOT_EMPTY");
     expect(empty.persisted).toBe(false);
     expect(empty.acted).toBe(false);
-    const occupied = engine.attemptLiveDelivery("hello", {
+    const occupied = await engine.attemptLiveDelivery("hello", {
       composer: "occupied",
       identity: "phone-label-present",
       direction: "unproven",

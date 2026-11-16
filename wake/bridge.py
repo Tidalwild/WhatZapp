@@ -12,7 +12,11 @@ import time
 from pathlib import Path
 
 from wake.composer import note_sample
+from wake.approval import approve, decide, mark_ambiguous, pause, revoke
 from wake.config import load_config, transmission_ready
+from wake.context import enable as enable_context
+from wake.context import revoke as revoke_context
+from wake.trace import note_read
 from wake.lifecycle import outbox_stopped, stop_requested
 from wake.listchange import apply_list_change
 from wake.pane import apply_pane_hint
@@ -40,6 +44,11 @@ _PERSON = frozenset({"v", "kind", "chatRef", "mark", "count"})
 _LIST_CHANGE = frozenset({"v", "kind", "mark", "count"})
 _PANE = frozenset({"v", "kind", "generation"})
 _COMPOSER = frozenset({"v", "kind", "state", "event"})
+_CONTEXT = frozenset({"v", "kind", "action", "scope"})
+_APPROVAL = frozenset({"v", "kind", "action", "scope", "event", "digest"})
+_APPROVAL_BARE = frozenset({"v", "kind", "action"})
+_READ_NOTE = frozenset({"v", "kind", "event"})
+_APPROVAL_ACTIONS = frozenset({"approve", "pause", "revoke", "ambiguous", "decide"})
 _CHANGES = frozenset({"baseline", "up", "down", "clear", "same", "held"})
 _WHEN = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$")
 
@@ -156,6 +165,12 @@ def accept(store: Path, config, pipeline, value) -> Outcome:
         return accept_pane(store, config, pipeline, value)
     if kind == "composer-sample":
         return accept_composer(store, pipeline, value)
+    if kind == "context-policy":
+        return accept_context(store, pipeline, value)
+    if kind == "approval-note":
+        return accept_approval(store, pipeline, value)
+    if kind == "read-note":
+        return accept_read_note(store, pipeline, value)
     if config.wire == "list" and kind == "list-signal":
         return Outcome("SCHEMA_HELD")
     if kind != "list-signal" or value.get("v") != 1 or set(value) - _LIST:
@@ -259,6 +274,76 @@ def accept_composer(store: Path, pipeline, value) -> Outcome:
     noted = note_sample(store, value.get("state"), event, pipeline.outbox.clock.now())
     if noted == "NOTED":
         return Outcome("COMPOSER_NOTED")
+    if noted == "UNREADABLE":
+        return Outcome("UNREADABLE")
+    return Outcome("UNPARSEABLE")
+
+
+def accept_context(store: Path, pipeline, value) -> Outcome:
+    """Operator opt-in only. Fact text and message text are refused."""
+
+    if value.get("v") != 1 or set(value) - _CONTEXT:
+        return Outcome("UNTRUSTED_FIELD")
+    action = value.get("action")
+    scope = value.get("scope")
+    if not isinstance(action, str) or not isinstance(scope, str):
+        return Outcome("UNPARSEABLE")
+    now = pipeline.outbox.clock.now()
+    if action == "enable":
+        result = enable_context(store, scope, now)
+    elif action == "revoke":
+        result = revoke_context(store, scope, now)
+    else:
+        return Outcome("UNPARSEABLE")
+    if result in {"ENABLED", "REVOKED"}:
+        return Outcome("CONTEXT_NOTED")
+    if result == "UNREADABLE":
+        return Outcome("UNREADABLE")
+    if result == "ABSENT":
+        return Outcome("CONTEXT_ABSENT")
+    return Outcome("UNPARSEABLE")
+
+
+def accept_approval(store: Path, pipeline, value) -> Outcome:
+    """Store a digest. The reply text is not accepted on this frame."""
+
+    action = value.get("action")
+    if action not in _APPROVAL_ACTIONS or value.get("v") != 1:
+        return Outcome("UNPARSEABLE")
+    bare = action in {"pause", "revoke", "ambiguous"}
+    if set(value) - (_APPROVAL_BARE if bare else _APPROVAL):
+        return Outcome("UNTRUSTED_FIELD")
+    if not bare and ("digest" not in value or "scope" not in value or "event" not in value):
+        return Outcome("UNPARSEABLE")
+    now = pipeline.outbox.clock.now()
+    if action == "pause":
+        result = pause(store)
+    elif action == "revoke":
+        result = revoke(store)
+    elif action == "ambiguous":
+        result = mark_ambiguous(store)
+    elif action == "decide":
+        result = decide(store, value.get("digest"), value.get("scope"), value.get("event"), now)
+    else:
+        result = approve(store, value.get("digest"), value.get("scope"), value.get("event"), now)
+    if result == "UNREADABLE":
+        return Outcome("UNREADABLE")
+    if result in {"UNPARSEABLE", "ABSENT", "NONE"}:
+        return Outcome("UNPARSEABLE")
+    return Outcome(result if _CODE.fullmatch(result or "") else "UNPARSEABLE")
+
+
+def accept_read_note(store: Path, pipeline, value) -> Outcome:
+    """A read happened. The frame has no message text and does not cover a wake."""
+
+    if value.get("v") != 1 or set(value) - _READ_NOTE:
+        return Outcome("UNTRUSTED_FIELD")
+    event = value.get("event", "")
+    if not isinstance(event, str):
+        return Outcome("UNPARSEABLE")
+    noted = note_read(store, event, pipeline.outbox.clock.now())
+    if noted == "NOTED":
+        return Outcome("READ_NOTED")
     if noted == "UNREADABLE":
         return Outcome("UNREADABLE")
     return Outcome("UNPARSEABLE")
