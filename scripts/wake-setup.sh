@@ -11,8 +11,10 @@ metadata envelope. It does not read a chat.
 
 1. Check the public package without a webhook call and without printing secrets:
    python3 -m wake setup-check
-   public-package-ok means the tree is consistent. It does not mean a bot
-   responded, and it does not mean WhatsApp is linked. Then confirm the
+   public-package-ok means the files agree and install-proven stays no.
+   It does not mean a bot responded, and it does not mean WhatsApp is linked.
+   python3 -m wake doctor
+   prints the same limits without calling the webhook. Then confirm the
    parent environment:
    python3 -m wake status
    auth is "value" or "normalized". sends-whatsapp stays no.

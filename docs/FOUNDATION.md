@@ -93,14 +93,18 @@ One git checkout is the pair. There is no separate release tag claimed here.
 - Browser: Chromium that can load an unpacked Manifest V3 extension. Firefox, Safari, the WhatsApp desktop app, and mobile apps are untested.
 - Webhook: yours, HTTPS, or HTTP only on `127.0.0.1` or `localhost` with a port. The value stays outside git.
 
-`result: public-package-ok` requires the manifest and README to agree, sending to stay off, the reference to stay unimported, and the contract checks above to hold. `webhook: missing` is expected on a clean tree and still passes.
+`result: public-package-ok` means those file checks agree. It also prints `install-proven: no`. A clean tree with no credential is not a completed installation, not a linked browser, and not a response from your routine.
 
-## Your bot, and the missing response
+## Three results that are not the same
 
-You connect your own routine. This package does not ship one and does not collect a new credential in a form. Copy `config/wake.env.example` outside the checkout, set `WHATSAPP_WAKE_CONFIG` to that file, and fill the URL and credential there. `python3 -m wake status` reports whether a value is present.
+- **Correlation only.** An outbox row with reason `transport-accepted` is local status that an HTTP post was accepted. `python3 -m wake doctor` prints `correlation: local-transport`. That is not a draft.
+- **Bot response.** Your own routine receives the wake and can read the visible chat and draft in the composer. See `docs/GROK.md`. This package does not currently record that draft. `bot-response: unproven` and `response-recorder: not-in-this-package` mean the recorder is unfinished. They do not mean your routine is unable to draft.
+- **Approved delivery.** Sending is a later gate. `approved-delivery: disabled` while `LIVE_SEND_ARMED` is false. A draft is not a send, and an HTTP 2xx is not delivery.
 
-Disconnect without printing those values: `python3 -m wake stop`, unset `WHATSAPP_WAKE_CONFIG`, and unload the unpacked extension. Local test files under `whatsapp-wake-test/` are gitignored. Delete that directory yourself if you want the local test store gone. Deleting it does not unlink WhatsApp.
+No new credential form and no stand-in response endpoint are added here. The open question, if a later slice should record the draft inside this package, is where the saved routine already keeps that draft: only inside the routine, or in a local file this package is allowed to read. Until that is known, doctor leaves the response unproven.
 
-The host reads an HTTP status from the webhook and, on the official transport, nothing else. It has no request path, field, or callback that carries an event id, a message id, a chat id, and a bot outcome back into this package. `response_blocker` therefore stays on `no-response-interface`, `transport-is-not-a-response`, `not-a-bot-response`, `local-test-fixture`, or `coverage-is-not-a-bot-response`. None of those means the bot finished.
+## Doctor, recovery, and rollback
 
-Until such an interface exists and is tested, a correlated own-bot response remains unverified. Do not treat `public-package-ok` or an HTTP 2xx as that result.
+`python3 -m wake doctor` prints a redacted report. It does not call the webhook, print the URL, the credential, the allowlist label, or a chat header. A leftover hello of `READY` is not a live browser. A ready page that is not marked fresh is `disconnected` with reason `stale-page`. Logout and a chat identity mismatch are `relink` (需要重新連結). Relink removes the binding and does not change `scope.json`. Network loss and a host restart are `recovering` (復原中). `python3 -m wake recover` applies the existing outbox restart rule: an in-flight id stays stored as retryable, uncovered, and the command never reports `browser: ready` from disk alone.
+
+`python3 -m wake rollback` prints the version pair and the runtime filenames still present. It does not delete them. `python3 -m wake rollback --drop-local-state` deletes only those known runtime names in the store. It skips symbolic links, leaves `scope.json` and any other file, and does not unlink WhatsApp. Reload the unpacked extension from this same checkout when the loaded extension version differs. That is a local pair check, not a published release.

@@ -1,9 +1,10 @@
 """Evidence this package can record. Version: wake-evidence-1.
 
 An HTTP acknowledgement, a queued or in-flight wake, and a reference-receiver
-stage are not a finished bot response. Coverage is only the reference stage
-``covered``, and only because a finished observation listed the id. This
-module does not open a socket and does not define a callback.
+stage are not a recorded bot response. The user's own routine may still
+inspect the page and draft; this module does not observe that draft.
+Coverage is only the reference stage ``covered``, and only because a
+finished observation listed the id. This module does not open a socket.
 """
 
 CONTRACT = "wake-evidence-1"
@@ -144,10 +145,11 @@ def from_reference_state(stage: str) -> Evidence:
 
 
 def response_blocker(record) -> str:
-    """Why this package cannot call a bot response complete.
+    """Why this package has not recorded a completed bot response.
 
-    There is no response callback. A transport row, a queue stage, a
-    reference stage, or a caller-supplied dict all stay unverified.
+    The user's routine may still draft outside this process. A transport
+    row, a queue stage, a reference stage, or a caller-supplied dict is
+    not that observation. This is not a claim that the routine cannot draft.
     """
 
     if isinstance(record, Evidence):

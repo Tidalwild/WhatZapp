@@ -26,7 +26,7 @@ A v3 wake is an event id and `observedAt`. It is not proof of a new incoming mes
 
 `examples/routine/reference_receiver.py` is a reference and test implementation of that rule. It is not installed into Grok Bot, and the extension does not run it. Copy it into the routine you operate. A change in this repository does not update a routine that is already deployed.
 
-This package has no callback that marks a bot response complete. `python3 -m wake setup-check` reports `response-interface: absent` and `response-handoff: unverified`. The evidence names are in `docs/FOUNDATION.md`. English names are the machine values. Traditional Chinese labels are display text only.
+This package does not yet record the draft your routine produces. That is unfinished recording, not a limit on the routine. `python3 -m wake doctor` keeps three results apart: `correlation: local-transport` is only the HTTP acceptance, `routine-response: unproven` is the draft this package has not seen, and `approved-delivery: disabled` is the send gate. An HTTP 2xx is none of those completions. English names are the machine values. Traditional Chinese labels are display text only. See `docs/FOUNDATION.md`.
 
 ## Reply tuning
 

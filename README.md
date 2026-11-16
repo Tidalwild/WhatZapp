@@ -54,7 +54,7 @@ With no URL, transmission stays blocked and nothing is sent. Leave `WHATSAPP_WAK
 
 `scripts/wake-setup.sh` prints the command sequence. It does not send a WhatsApp message.
 
-`python3 -m wake setup-check` reads this tree and reports the public limits. It does not call a webhook, open WhatsApp, or print a URL or credential. `result: public-package-ok` means the package is internally consistent. It does not mean a bot responded. See `docs/FOUNDATION.md`.
+`python3 -m wake setup-check` reads this tree and reports the public limits. It does not call a webhook, open WhatsApp, or print a URL or credential. `result: public-package-ok` means the files agree. It prints `install-proven: no`. It is not a completed installation and it is not a bot response. `python3 -m wake doctor` is the redacted diagnosis. See `docs/FOUNDATION.md`.
 
 ## Grok Bot
 
