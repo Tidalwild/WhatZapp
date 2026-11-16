@@ -14,7 +14,7 @@ Re-run the named tests after you change the tree. A row is unverified when this 
 | Native host wake | `tests/wake/` with a stand-in transport | No live webhook is part of the check. |
 | Official HTTP 2xx | `wake/client.py`, `wake/evidence.py` | Stage `transport-accepted`. The body is ignored. |
 | Local receipt body | `WHATSAPP_WAKE_TRANSPORT=test-receipt` and `python3 -m wake routine` | Labelled `local-mock-handler`. It is not the default and it is not a bot. |
-| Late unique event | `examples/routine/reference_receiver.py` and `tests/wake/test_reference_receiver.py` | Reference only. `setup-check` fails if `wake/` or `web/src` imports it. |
+| Late unique event | `wake/ledger.py` plus the page, list, and pane paths | The host stores event ids and message keys. HTTP 2xx does not cover an id or release the worker. The example receiver stays uninstalled. Coverage still needs an observation this package does not record. |
 | Direction | `docs/DIRECTION.md` and the web reader tests | Ambiguous rows stay unproven. Layout, a clock, and an unread mark are not incoming proof. |
 | Sending | `LIVE_SEND_ARMED = false` in `web/src/replyDelivery.ts` | Default off. The reference `request_send` returns `NOT_SENT`. |
 | Bot response | No module accepts a response callback | `response-interface: absent`. A caller-supplied dict is still unverified. |
@@ -63,14 +63,16 @@ Machine values are English. `Evidence.label("zh-Hant")` returns Traditional Chin
 
 Outbox states map as `pending` to `queued`, `in_flight` to `inflight`, and `acked` plus `transport-accepted` to `transport-accepted`. There is no transition from `transport-accepted` to a bot response.
 
-Reference rules, already tested and not installed:
+The host stores that rule in `event-ledger.json` (`wake-ledger-1`). A posted wake stays in flight. A later distinct id stays pending. Neither is covered by HTTP 2xx. The same message key does not mint another id. Page, list, and pane code do not call `complete`, because this package still has no finished observation. The example module stays uninstalled. `setup-check` fails if `wake/` or `web/src` imports it.
+
+Reference rules, already tested:
 
 - One worker. A second unique id during the lock stays pending.
 - `observedAt` earlier than a sample clock does not cover an id.
 - A failed or timed-out observation returns in-flight ids to pending.
 - After two followup rounds, leftover ids stay unresolved.
 - Event ids and handled message keys stay in different sets.
-- The reference never sends.
+- The reference never sends. Pending, queued, and in-flight ids are not covered.
 
 ## Scope rubric
 

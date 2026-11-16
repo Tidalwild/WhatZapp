@@ -14,6 +14,7 @@ from wake import __version__
 from wake.bridge import read_handshake, read_host
 from wake.config import load_config, valid_url
 from wake.evidence import CONTRACT
+from wake.ledger import summary as late_summary
 from wake.recovery import (
     apply_relink,
     binding_state,
@@ -30,6 +31,7 @@ RUNTIME_NAMES = (
     "binding.json",
     "drafts.json",
     "event-ids.json",
+    "event-ledger.json",
     "handshake.json",
     "host.json",
     "latest-receipt.txt",
@@ -82,6 +84,7 @@ def diagnose(env: dict, store: Path, root: Path, loaded_extension: str = "", res
         f"approved-delivery: {'blocked-send-armed' if armed == 'true' else 'disabled'}",
         f"live-send-armed: {armed}",
         f"unresolved: {count if count is not None else 'unreadable'}",
+        f"late-events: {late_summary(store)}",
         f"binding: {binding_state(store)}",
         f"scope-mode: {_scope_mode(store)}",
         f"retained: {_retained(store)}",

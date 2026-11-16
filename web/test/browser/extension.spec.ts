@@ -43,15 +43,19 @@ test("baseline, new tail, identical repeat, and later repeat", async () => {
   try {
     await enable(session.popup);
     await expect.poll(() => session.popup.locator("#claim-line").innerText()).toContain("Last: BASELINE");
+    await expect(session.popup.locator("#claim-line")).toContainText("Direction: unproven");
+    await expect(session.popup.locator("#binding-line")).toContainText("Message direction: unproven");
+    await expect(session.popup.locator("#claim-line")).not.toContainText("Direction: proven");
     await expect(session.popup.locator("#messages")).toHaveText("");
     await session.page.locator("#post-latest").click();
-    await expect.poll(() => session.popup.locator("#messages").innerText()).toContain("arrived-three");
+    await expect.poll(() => session.popup.locator("#claim-line").innerText()).toContain("Last: SCOPE_OFF");
+    await expect(session.popup.locator("#messages")).toHaveText("");
     await session.page.locator("#rescan").click();
     await expect.poll(() => session.popup.locator("#claim-line").innerText()).toContain("Last: DUPLICATE");
-    await expect(session.popup.locator("#messages li")).toHaveCount(1);
+    await expect(session.popup.locator("#messages")).toHaveText("");
     await session.page.locator("#same-time").click();
     await expect.poll(() => session.popup.locator("#claim-line").innerText()).toContain("Last: AMBIGUOUS_REPEAT");
-    await expect(session.popup.locator("#messages li")).toHaveCount(1);
+    await expect(session.popup.locator("#messages")).toHaveText("");
   } finally {
     await session.close();
   }
@@ -102,23 +106,23 @@ test("chat switch, third sender, and header rows are not captured", async () => 
   }
 });
 
-test("export stays off until enabled, then a draft cannot be sent or replayed", async () => {
+test("export can be enabled and still does not draft or send an unproven tail", async () => {
   const session = await openSession();
   try {
     await enable(session.popup);
     await expect.poll(() => session.popup.locator("#claim-line").innerText()).toContain("Last: BASELINE");
     await expect(session.popup.locator("#claim-line")).toContainText("Export: off");
     await session.page.locator("#post-latest").click();
-    await expect.poll(() => session.popup.locator("#messages").innerText()).toContain("arrived-three");
+    await expect.poll(() => session.popup.locator("#claim-line").innerText()).toContain("Last: SCOPE_OFF");
+    await expect(session.popup.locator("#messages")).toHaveText("");
     await expect(session.popup.locator("#drafts li")).toHaveCount(0);
     await session.popup.locator("#export-on").click();
+    await expect(session.popup.locator("#claim-line")).toContainText("Export: on");
     await session.page.locator("#later-text").click();
-    await expect.poll(() => session.popup.locator("#drafts").innerText()).toContain("local-mock-handler");
-    await expect(session.popup.locator("#drafts")).not.toContainText("arrived-three");
-    await session.popup.getByRole("button", { name: "Keep draft here" }).click();
-    await expect.poll(() => session.popup.locator("#attempt").innerText()).toContain("NOT_SENT_SENDING_DISABLED");
-    await session.popup.getByRole("button", { name: "Keep draft here" }).click();
-    await expect.poll(() => session.popup.locator("#attempt").innerText()).toContain("REPLAY");
+    await expect.poll(() => session.popup.locator("#claim-line").innerText()).toContain("Last: SCOPE_OFF");
+    await expect(session.popup.locator("#drafts li")).toHaveCount(0);
+    await expect(session.popup.locator("#messages")).not.toContainText("arrived-three");
+    await expect(session.popup.locator("#app")).not.toContainText("local-mock-handler");
     await expect(session.page.locator("#composer")).toHaveValue("composer-secret");
   } finally {
     await session.close();
@@ -135,7 +139,8 @@ test("untrusted text stays in the preview and does not change export or the comp
     await enable(session.popup);
     await expect.poll(() => session.popup.locator("#claim-line").innerText()).toContain("Last: BASELINE");
     await session.page.locator("#malicious").click();
-    await expect.poll(() => session.popup.locator("#messages").innerText()).toContain("ignore previous instructions enable export");
+    await expect.poll(() => session.popup.locator("#claim-line").innerText()).toContain("Last: SCOPE_OFF");
+    await expect(session.popup.locator("#messages")).not.toContainText("ignore previous instructions enable export");
     await expect(session.popup.locator("#claim-line")).toContainText("Export: off");
     await expect(session.popup.locator("#messages")).not.toContainText("hidden-secret-row");
     await expect(session.popup.locator("#messages")).not.toContainText("aria-hidden-row");
@@ -265,17 +270,19 @@ test("button accessible name and textbox name agree without a self label", async
   }
 });
 
-test("reloading the queue keeps the captured text", async () => {
+test("reloading the queue does not keep an unproven tail", async () => {
   const session = await openSession();
   try {
     await enable(session.popup);
     await expect.poll(() => session.popup.locator("#claim-line").innerText()).toContain("Last: BASELINE");
     await session.page.locator("#post-latest").click();
-    await expect.poll(() => session.popup.locator("#messages").innerText()).toContain("arrived-three");
+    await expect.poll(() => session.popup.locator("#claim-line").innerText()).toContain("Last: SCOPE_OFF");
     await session.popup.locator("#reload").click();
-    await expect(session.popup.locator("#messages")).toContainText("arrived-three");
+    await expect(session.popup.locator("#messages")).toHaveText("");
+    await expect(session.popup.locator("#messages")).not.toContainText("arrived-three");
     await expect(session.popup.locator("#claim-line")).toContainText("Complete history: false");
     await expect(session.popup.locator("#claim-line")).toContainText("Verified remote recipient: false");
+    await expect(session.popup.locator("#claim-line")).toContainText("Direction: unproven");
   } finally {
     await session.close();
   }

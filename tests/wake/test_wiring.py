@@ -308,9 +308,20 @@ class WiringTests(unittest.TestCase):
             _shot(_SEEDS + (("fixture chat", MARKER, "09:02"), ("fixture chat", "later-text", "09:04"))),
             made.outbox,
         )
-        self.assertEqual(again["disposition"], "ALREADY_DRAFTED")
+        self.assertEqual(again["disposition"], "LATE_MESSAGE")
         self.assertFalse(again["draft"])
+        self.assertFalse(again["covered"])
         self.assertEqual(len(json.loads((directory / "read-drafts.json").read_text(encoding="utf-8"))["drafts"]), 1)
+        ledger = json.loads((directory / "event-ledger.json").read_text(encoding="utf-8"))
+        self.assertEqual(ledger["covered"], [])
+        self.assertEqual(len(ledger["messageKeys"]), 2)
+        self.assertTrue(all(key not in ledger["seen"] for key in ledger["messageKeys"]))
+        duplicate = read_snapshot(
+            directory,
+            _shot(_SEEDS + (("fixture chat", MARKER, "09:02"), ("fixture chat", "later-text", "09:04"))),
+            made.outbox,
+        )
+        self.assertEqual(duplicate["disposition"], "NO_NEW")
         blob = _tree(directory)
         for secret in (MARKER, "one-text", "other-text", "first-new", "second-new", "later-text", "seed-one", "LOCAL MOCK"):
             self.assertNotIn(secret, blob)

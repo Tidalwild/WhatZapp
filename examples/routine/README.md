@@ -1,6 +1,6 @@
 # Reference wake receiver
 
-`reference_receiver.py` is a test implementation of the late-wake rule. It is not installed into Grok Bot. The extension does not import it. The native host does not import it. Updating this repository does not change a routine that is already running. Copy the rule into the receiver you operate. `python3 -m wake setup-check` reports this file as `example-only`.
+`reference_receiver.py` is a test implementation of the late-wake rule. It is not installed into Grok Bot. The extension does not import it. The native host does not import it. `wake/ledger.py` keeps late event ids pending in the store and does not import this file, mark those ids covered, or install this module into a bot. Updating this repository does not change a routine that is already running. Copy the rule into the receiver you operate. `python3 -m wake setup-check` reports this file as `example-only`.
 
 ## What you configure
 

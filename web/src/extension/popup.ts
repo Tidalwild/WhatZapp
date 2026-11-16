@@ -328,12 +328,12 @@ function paint(reply: Reply | undefined): void {
   paintRead(lastRead, undefined);
   boundHeader = view.binding?.visibleHeader ?? "";
   if (view.binding && view.binding.mode !== "metadata" && selfInput.value === "") selfInput.value = view.binding.selfLabel;
-  const direction = !view.binding ? "none" : view.binding.mode === "metadata" ? "unproven" : "proven";
+  const direction = !view.binding ? "none" : "unproven";
   bindingLine.textContent = !view.binding
     ? "No chat is bound."
     : view.binding.mode === "metadata"
       ? `Metadata scope ${view.binding.localScopeId} for “${view.binding.visibleHeader}”. Message direction: unproven.`
-      : `Message scope ${view.binding.localScopeId} for “${view.binding.visibleHeader}”. Message direction: proven.`;
+      : `Message scope ${view.binding.localScopeId} for “${view.binding.visibleHeader}”. Message direction: unproven.`;
   const grant = view.replyGrant?.enabled ? "on" : "off";
   const identity = view.identityStatus ?? "unenrolled";
   const scopeMode = view.scope?.mode ?? "off";

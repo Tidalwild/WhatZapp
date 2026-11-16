@@ -20,6 +20,7 @@ import re
 import uuid
 from pathlib import Path
 
+from wake.ledger import note_posted, remember_message
 from wake.outbox import Outbox
 from wake.policy import valid_label
 
@@ -163,16 +164,45 @@ def read_snapshot(directory: Path, snapshot, outbox: Outbox, event_id: str | Non
     permit = notification_permit(outbox, event_id)
     if permit is None:
         return _gap("NO_WAKE")
+    key = f"tail:{int(preview['replaces'])}"
     if _already_drafted(directory, permit.event_id):
-        return _gap("ALREADY_DRAFTED")
+        return _late_message(directory, snapshot, binding, key)
     parsed = _parse(snapshot, binding)
     if not parsed["ok"]:
         return _gap(parsed["reason"])
+    note_posted(directory, permit.event_id, key, int(outbox.clock.now()))
     record = _record(permit.event_id, binding["localScopeId"], permit.reason or "")
     _advance(directory, _load_window(directory, binding["localScopeId"]), parsed)
     _append_draft(directory, record)
     mock = record.get("handler") == "local-mock-handler"
     return _result("ONE_INBOUND", record if mock else None, "" if mock else str(record.get("kind") or ""))
+
+
+def hold_candidate(directory: Path, snapshot) -> None:
+    """Advance the read window without storing message text."""
+
+    binding = load_binding(directory)
+    if binding is None:
+        return
+    parsed = _parse(snapshot, binding)
+    if not parsed["ok"]:
+        return
+    window = _load_window(directory, binding["localScopeId"])
+    if window.get("baseline") is not True:
+        return
+    _advance(directory, window, parsed)
+
+
+def _late_message(directory: Path, snapshot, binding: dict, key: str) -> dict:
+    status = remember_message(directory, key)
+    if status == "DUPLICATE":
+        return _gap("DUPLICATE_EVENT")
+    if status != "ADDED":
+        return _gap("LATE_UNREADABLE")
+    parsed = _parse(snapshot, binding)
+    if parsed["ok"]:
+        _advance(directory, _load_window(directory, binding["localScopeId"]), parsed)
+    return _result("LATE_MESSAGE", None)
 
 
 def notification_permit(outbox: Outbox, event_id: str | None = None):
@@ -414,6 +444,7 @@ def _result(disposition: str, draft, ack: str = "") -> dict:
         "disposition": disposition,
         "draft": draft is not None,
         "ack": ack,
+        "covered": False,
         "verifiedRemoteRecipient": False,
         "liveWhatsApp": False,
         "sendsWhatsApp": False,
