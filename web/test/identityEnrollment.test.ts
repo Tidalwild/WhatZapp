@@ -36,7 +36,7 @@ describe("identity enrollment", () => {
     expect(JSON.stringify(bound.dump())).not.toContain("not-a-phone");
   });
 
-  it("enrolls only a digest whose number resolution opened the contact-a header", () => {
+  it("enrolls only a digest whose number resolution opened the contact-a header", async () => {
     const bound = engine();
     expect(bound.enrollIdentity({
       contactDigest: contact,
@@ -65,7 +65,7 @@ describe("identity enrollment", () => {
     expect(decision.blocked).not.toContain("IDENTITY_UNPROVEN");
     expect(decision.blocked).toContain("DIRECTION_UNPROVEN");
     expect(decision.delivered).toBe(false);
-    const delivery = bound.attemptLiveDelivery("hello", {
+    const delivery = await bound.attemptLiveDelivery("hello", {
       composer: "empty",
       identity: "phone-label-absent",
       direction: "unproven",
@@ -80,7 +80,7 @@ describe("identity enrollment", () => {
     expect(bound.view().deliveryEnabled).toBe(false);
   });
 
-  it("records a same-account number as self-chat and keeps outgoing exclusion", () => {
+  it("records a same-account number as self-chat and keeps outgoing exclusion", async () => {
     const bound = engine();
     expect(bound.enrollIdentity({
       contactDigest: contact,
@@ -91,7 +91,7 @@ describe("identity enrollment", () => {
     expect(bound.view().identityStatus).toBe("self-chat");
     expect(bound.view().verifiedRemoteRecipient).toBe(false);
     expect(bound.view().deliveryEnabled).toBe(false);
-    const delivery = bound.attemptLiveDelivery("hello", {
+    const delivery = await bound.attemptLiveDelivery("hello", {
       composer: "empty",
       identity: "drawer-closed",
       direction: "unproven",

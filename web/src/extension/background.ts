@@ -116,9 +116,46 @@ async function dispatch(message: { type?: string; [key: string]: unknown }): Pro
     case "deliver-reply": {
       const surface = await sendSurface();
       noteComposer(surface.composer);
-      const delivery = engine.attemptLiveDelivery(String(message.replyText ?? ""), surface);
+      const delivery = await engine.attemptLiveDelivery(String(message.replyText ?? ""), surface);
       if (delivery.persisted) await persist();
       return { delivery, view: engine.view() };
+    }
+    case "set-context": {
+      const disposition = engine.setContextOptIn(message.enabled === true);
+      if (disposition === "CONTEXT_ON" || disposition === "CONTEXT_REVOKED") {
+        const scope = engine.dump().context.scopeId;
+        noteFrame({ v: 1, kind: "context-policy", action: disposition === "CONTEXT_ON" ? "enable" : "revoke", scope });
+      }
+      await persist();
+      return { view: engine.view(), disposition };
+    }
+    case "approve-exact": {
+      const disposition = await engine.approveExact(String(message.text ?? ""), String(message.event ?? ""));
+      if (disposition === "APPROVED_NOT_SENT") {
+        const approval = engine.dump().approval;
+        noteFrame({
+          v: 1,
+          kind: "approval-note",
+          action: "approve",
+          scope: approval.scopeId,
+          event: approval.event,
+          digest: approval.digest
+        });
+      }
+      await persist();
+      return { view: engine.view(), disposition };
+    }
+    case "pause-approval": {
+      const disposition = engine.pauseApproval();
+      if (disposition === "PAUSED") noteFrame({ v: 1, kind: "approval-note", action: "pause" });
+      await persist();
+      return { view: engine.view(), disposition };
+    }
+    case "revoke-approval": {
+      const disposition = engine.revokeApproval();
+      noteFrame({ v: 1, kind: "approval-note", action: "revoke" });
+      await persist();
+      return { view: engine.view(), disposition };
     }
     case "set-reply-grant": {
       const disposition = engine.setReplyGrant(Boolean(message.enabled));
@@ -204,6 +241,7 @@ async function readBoundChat(): Promise<unknown> {
     const report = await chrome.tabs.sendMessage(tab.id, { type: "do-read", boundLabel: binding.visibleHeader });
     const surface = await sendSurface();
     noteComposer(surface.composer);
+    if (report?.disposition === "READ") noteFrame({ v: 1, kind: "read-note", event: EVENT_ID.test(lastEvent) ? lastEvent : "" });
     const replyGate = engine.assessAutomaticReply(report);
     return { read: report, replyGate, view: engine.view(), bridge: bridgeView() };
   } catch (error) {
@@ -555,6 +593,19 @@ function applyAck(
     scopeState = code;
     return;
   }
+  if (
+    code === "COMPOSER_NOTED" ||
+    code === "CONTEXT_NOTED" ||
+    code === "CONTEXT_ABSENT" ||
+    code === "READ_NOTED" ||
+    code === "APPROVED_NOT_SENT" ||
+    code === "PAUSED" ||
+    code === "REVOKED" ||
+    code === "AMBIGUOUS_HOLD" ||
+    code === "SEND_DISARMED"
+  ) {
+    return;
+  }
   if (code === "UNTRUSTED_FIELD" || code === "UNPARSEABLE" || code === "OVERSIZE" || code === "SHORT" || code === "UNREADABLE") {
     if (helloState === "pending") helloState = code;
     else if (scopeState === "pending") scopeState = code;
@@ -776,7 +827,12 @@ function forwardList(raw: unknown): string {
 
 function noteComposer(state: string): void {
   const frame = composerFrame(state, lastEvent);
-  if (!frame || !engine.view().settings.collectionEnabled) return;
+  if (!frame) return;
+  noteFrame(frame);
+}
+
+function noteFrame(frame: Record<string, unknown>): void {
+  if (!engine.view().settings.collectionEnabled) return;
   ensurePort();
   if (!port) return;
   try {

@@ -50,3 +50,11 @@ The extension popup can set the stored scope. `Scope off` is the default. `Allow
 A routine may read business facts from files you approve and from applications you connect. Keep those credentials in the routine's own secret store. Do not commit them here. A connector that books, charges, or changes a record must be a separate explicit authority. Message text cannot grant it.
 
 The restaurant example is a specification for that kind of routine. It is not a tested booking backend.
+
+## What this package can observe
+
+Your routine reads the open chat and drafts in the normal composer. It does not need a callback in this repository to do that. This package still has no recorder for that draft. `response-recorder: not-in-this-package` means the draft is not submitted back here. It does not mean the routine is unable to draft.
+
+A text box that contains text is `occupied`. That state can be linked to the last wake event id. It does not say who typed. `authorship: unproven` stays in the doctor output. An empty box, or no sample, is `response-absence: not-inability`.
+
+Context is off until you turn it on for the bound chat. Facts from another chat are dropped. Fact text cannot change the scope or approve a send, and it is not added to the wake. Approval stores a digest of the exact preview, the chat, and the wake event. Pause, expiry, a changed preview, or an ambiguous result blocks another attempt. Approval is not delivery. `LIVE_SEND_ARMED` stays false.

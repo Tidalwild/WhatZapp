@@ -1,3 +1,5 @@
+import { phrase, type Language } from "../copy.js";
+
 type View = {
   settings: {
     onboardingAccepted: boolean;
@@ -22,6 +24,8 @@ type View = {
   replyGrant?: { enabled: boolean; token: string; localScopeId: string };
   scope?: { mode: string };
   deliveryEnabled: false;
+  contextEnabled?: boolean;
+  approvalPhase?: string;
 };
 
 type ReplyGate = {
@@ -123,6 +127,22 @@ gapList.id = "gaps";
 const wakeLine = el("p");
 wakeLine.id = "wake-open";
 wakeLine.textContent = "Wake open: not requested. It does not send.";
+const language = document.createElement("select");
+language.id = "language";
+for (const [value, label] of [["en", "English"], ["zh-Hant", "繁體中文"]] as const) {
+  const option = document.createElement("option");
+  option.value = value;
+  option.textContent = label;
+  language.append(option);
+}
+let uiLanguage: Language = "en";
+let approvalEvent = "";
+const policyLine = el("p");
+policyLine.id = "policy-line";
+const approvalInput = document.createElement("textarea");
+approvalInput.id = "approval-preview";
+approvalInput.maxLength = 1000;
+approvalInput.autocomplete = "off";
 const contactLine = el("p");
 contactLine.id = "contact-surface";
 contactLine.textContent = "Contact surface: not checked. It does not open a chat and it does not send.";
@@ -163,7 +183,10 @@ app.append(
   draftList,
   attemptLine,
   wakeLine,
-  contactLine
+  contactLine,
+  language,
+  policyLine,
+  approvalInput
 );
 
 wire();
@@ -243,7 +266,30 @@ function buttons(): HTMLElement {
       wakeLine.textContent = `Wake open: ${disposition}. It does not send.`;
       return reply;
     }),
-    action("Purge texts", "purge", () => send({ type: "purge" }))
+    action("Purge texts", "purge", () => send({ type: "purge" })),
+    action("Use context for this chat", "context-on", async () => {
+      const reply = await send({ type: "set-context", enabled: true });
+      if (reply.disposition) statusLine.textContent = reply.disposition;
+      return reply;
+    }),
+    action("Revoke context", "context-off", async () => {
+      const reply = await send({ type: "set-context", enabled: false });
+      if (reply.disposition) statusLine.textContent = reply.disposition;
+      return reply;
+    }),
+    action("Approve exact text", "approve-exact", async () => {
+      if (!/^evt-[0-9a-f]{32}$/.test(approvalEvent)) {
+        statusLine.textContent = "EVENT_UNUSABLE";
+        return { disposition: "EVENT_UNUSABLE" };
+      }
+      const reply = await send({ type: "approve-exact", text: approvalInput.value, event: approvalEvent });
+      if (reply.disposition === "APPROVED_NOT_SENT") {
+        statusLine.textContent = `${reply.disposition}. ${phrase(uiLanguage, "approved")}`;
+      } else if (reply.disposition) statusLine.textContent = reply.disposition;
+      return reply;
+    }),
+    action("Pause approval", "pause-approval", () => send({ type: "pause-approval" })),
+    action("Revoke approval", "revoke-approval", () => send({ type: "revoke-approval" }))
   );
   return box;
 }
@@ -252,6 +298,15 @@ function wire(): void {
   onboarding.addEventListener("change", () => {
     void send({ type: "set-onboarding", accepted: onboarding.checked });
   });
+  language.addEventListener("change", () => {
+    uiLanguage = language.value === "zh-Hant" ? "zh-Hant" : "en";
+    paintPolicy();
+  });
+  paintPolicy();
+}
+
+function paintPolicy(): void {
+  policyLine.textContent = `${phrase(uiLanguage, "sendingOff")} ${phrase(uiLanguage, "contextOff")} ${phrase(uiLanguage, "authorship")} ${phrase(uiLanguage, "absence")}`;
 }
 
 async function refresh(): Promise<void> {
@@ -339,6 +394,12 @@ function paint(reply: Reply | undefined): void {
   const scopeMode = view.scope?.mode ?? "off";
   claimLine.textContent = `Onboarding: ${view.settings.onboardingAccepted ? "yes" : "no"}. Verified remote recipient: ${String(view.verifiedRemoteRecipient)}. Identity: ${identity}. Complete history: ${String(view.historyComplete)}. Direction: ${direction}. Collection: ${view.settings.collectionEnabled ? "on" : "off"}. Export: ${view.settings.exportEnabled ? "on" : "off"}. Contact scope: ${scopeMode}. Reply grant: ${grant}. Delivery: ${view.deliveryEnabled ? "on" : "closed"}. Live send: off. Last: ${view.lastDisposition || "none"}.`;
   const bridge = reply?.bridge;
+  const bridgeEvent = bridge?.event && /^evt-[0-9a-f]{32}$/.test(bridge.event)
+    ? bridge.event
+    : bridge?.lastEvent && /^evt-[0-9a-f]{32}$/.test(bridge.lastEvent)
+      ? bridge.lastEvent
+      : "";
+  if (bridgeEvent) approvalEvent = bridgeEvent;
   bridgeLine.textContent = bridge
     ? `Page bridge: ${bridge.state}. Hello: ${bridge.hello}. Scope: ${bridge.scope}. List: ${bridge.list}.${bridge.recent ? ` Recent: ${bridge.recent}.` : ""}${countClause(bridge)} This sample posted: ${bridge.posted ? "yes" : "no"}.${bridge.at ? ` Seen: ${bridge.at}.` : ""}${forwardClause(bridge)}${lastClause(bridge)}${bridge.cause ? ` Cause: ${bridge.cause}.` : ""}${bridge.detail ? ` Detail: ${bridge.detail}.` : ""}`
     : "Page bridge: off.";

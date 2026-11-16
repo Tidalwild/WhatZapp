@@ -1,3 +1,4 @@
+import { assembleContext, emptyContext, normalizeContext, CONTEXT_TTL_MS, type ContextFact } from "./contextPolicy.js";
 import { hmacHex } from "./crypto.js";
 import { align, fingerprint } from "./dedup.js";
 import { FilteringLog } from "./log.js";
@@ -18,6 +19,13 @@ import {
 import { normalizeScope, contactInScope, DEFAULT_SCOPE, type ContactScope } from "./contactScope.js";
 import { decideReply, emptyGrant, type ReplyDecision } from "./replyGate.js";
 import { commitDelivery, recordStore, unwiredActuator, type DeliveryResult } from "./replyDelivery.js";
+import {
+  APPROVAL_TTL_MS,
+  decideAuthority,
+  digestText,
+  emptyApproval,
+  normalizeApproval
+} from "./sendAuthority.js";
 import { decideIdentity, emptyIdentity, normalizeIdentity, remoteIdentityReady, type IdentityClaim } from "./identityEnrollment.js";
 import { acceptSurface, closedSurface, visibleSetIsOutgoing, type SendSurface } from "./sendSurface.js";
 
@@ -71,6 +79,8 @@ export class Engine {
       scope: state.scope,
       identityStatus: state.identity.status,
       deliveryEnabled: false,
+      contextEnabled: state.context.enabled === true && state.context.revoked !== true,
+      approvalPhase: state.approval.phase,
       baselineEstablished: state.baselineEstablished,
       messages: state.messages.map((message) => ({
         eventId: message.eventId,
@@ -233,8 +243,77 @@ export class Engine {
     });
   }
 
-  attemptLiveDelivery(replyText: string, surface?: SendSurface): DeliveryResult {
+  setContextOptIn(enabled: boolean): string {
+    const binding = this.state.binding;
+    if (!binding || binding.localScopeId === "") return "NOT_BOUND";
+    if (!enabled) {
+      const scopeId = this.state.context.scopeId || binding.localScopeId;
+      this.state.context = { ...emptyContext(), revoked: true, scopeId };
+      this.log.event("settings", { disposition: "context-off" });
+      return "CONTEXT_REVOKED";
+    }
+    this.state.context = {
+      enabled: true,
+      scopeId: binding.localScopeId,
+      source: "operator",
+      enabledAtMillis: this.now(),
+      expiresAtMillis: this.now() + CONTEXT_TTL_MS,
+      revoked: false
+    };
+    this.log.event("settings", { disposition: "context-on" });
+    return "CONTEXT_ON";
+  }
+
+  previewContext(facts: readonly ContextFact[]) {
+    const chat = this.state.binding?.localScopeId ?? "";
+    return assembleContext(this.state.context, facts, this.now(), chat);
+  }
+
+  async approveExact(text: string, event: string): Promise<string> {
+    if (SEND_POLICY.invocationArmed || SEND_POLICY.backgroundAutoSend) return "POLICY";
+    const binding = this.state.binding;
+    if (!binding || binding.localScopeId === "") return "NOT_BOUND";
+    if (text.length > 1000) return "TOO_LONG";
+    if (text.trim() === "") return "EMPTY";
+    if (!/^evt-[0-9a-f]{32}$/.test(event)) return "EVENT_UNUSABLE";
+    if (this.state.approval.phase === "ambiguous") return "AMBIGUOUS_HOLD";
+    const digest = await digestText(text);
+    this.state.approval = {
+      phase: "approved",
+      digest,
+      scopeId: binding.localScopeId,
+      event,
+      approvedAtMillis: this.now(),
+      expiresAtMillis: this.now() + APPROVAL_TTL_MS,
+      paused: false
+    };
+    this.log.event("approval", { disposition: "APPROVED_NOT_SENT" });
+    return "APPROVED_NOT_SENT";
+  }
+
+  pauseApproval(): string {
+    if (this.state.approval.phase === "none") return "NONE";
+    this.state.approval = { ...this.state.approval, paused: true };
+    this.log.event("approval", { disposition: "PAUSED" });
+    return "PAUSED";
+  }
+
+  revokeApproval(): string {
+    this.state.approval = emptyApproval();
+    this.log.event("approval", { disposition: "REVOKED" });
+    return "REVOKED";
+  }
+
+  holdAmbiguous(): string {
+    if (this.state.approval.phase === "none") return "NONE";
+    this.state.approval = { ...this.state.approval, phase: "ambiguous", paused: true };
+    this.log.event("approval", { disposition: "AMBIGUOUS_HOLD" });
+    return "AMBIGUOUS_HOLD";
+  }
+
+  async attemptLiveDelivery(replyText: string, surface?: SendSurface): Promise<DeliveryResult> {
     this.expireGrant();
+    const authorityReason = await this.authorityFor(replyText);
     const binding = this.state.binding;
     const grant = this.state.replyGrant;
     const observed = acceptSurface(surface ?? closedSurface());
@@ -283,7 +362,8 @@ export class Engine {
       actuator: unwiredActuator(),
       allowFixture: false,
       untrustedText: replyText,
-      scope: this.state.scope
+      scope: this.state.scope,
+      authorityReason
     });
     this.log.event("delivery", { disposition: result.reason });
     return result;
@@ -413,6 +493,18 @@ export class Engine {
     return { kind: "NOT_SENT_SENDING_DISABLED", reason: "sending-disabled" };
   }
 
+  private async authorityFor(replyText: string): Promise<string> {
+    const binding = this.state.binding;
+    const digest = await digestText(replyText);
+    return decideAuthority(
+      this.state.approval,
+      this.now(),
+      digest,
+      binding?.localScopeId ?? "",
+      this.state.approval.event
+    );
+  }
+
   private expireGrant(): void {
     const grant = this.state.replyGrant;
     if (grant.enabled && grant.expiresAtMillis <= this.now()) this.state.replyGrant = emptyGrant();
@@ -521,6 +613,8 @@ export function freshState(ids: () => string, secretHex?: string): State {
     scope: DEFAULT_SCOPE,
     identity: emptyIdentity(),
     deliveryRecords: [],
+    context: emptyContext(),
+    approval: emptyApproval(),
     historyComplete: false,
     keyMaterial: secretHex ?? randomSecretFallback(),
     counters: { captured: 0, duplicates: 0, ambiguous: 0, gaps: 0 },
@@ -566,6 +660,8 @@ function normalizeReplyGrant(state: State): State {
     : emptyGrant();
   state.replyGrant = next;
   state.identity = normalizeIdentity(state.identity, state.binding);
+  state.context = normalizeContext(state.context);
+  state.approval = normalizeApproval(state.approval);
   if (!Array.isArray(state.deliveryRecords)) state.deliveryRecords = [];
   state.deliveryRecords = state.deliveryRecords
     .filter(

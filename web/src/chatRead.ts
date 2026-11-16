@@ -51,6 +51,7 @@ export type ReadCoverage = {
   unparsed: number;
   stopped: string;
   limit: string;
+  keyIds: string[];
 };
 
 export type ChatReadReport = {
@@ -221,7 +222,8 @@ function reportFrom(first: Sample, steps: Sample[], scrolls: number, capped: boo
         duplicates: 0,
         withoutText: 0,
         unparsed: 0,
-        stopped
+        stopped,
+        keyIds: []
       })
     };
   }
@@ -250,7 +252,8 @@ function reportFrom(first: Sample, steps: Sample[], scrolls: number, capped: boo
       duplicates: merged.duplicates,
       withoutText: steps.reduce((sum, step) => sum + step.withoutText, 0),
       unparsed: steps.reduce((sum, step) => sum + step.unparsed, 0),
-      stopped
+      stopped,
+      keyIds: chatSwitch ? [] : merged.rows.map((row) => row.occurrenceId).filter((id) => id !== "")
     })
   };
 }

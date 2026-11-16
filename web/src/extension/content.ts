@@ -1,4 +1,5 @@
 import { collectOpenChat } from "../chatRead.js";
+import { applyDelta, emptyDelta, type DeltaCache } from "../deltaRead.js";
 import { emptyMemory, readChatListSignal, type ListMemory } from "../listSignal.js";
 import { readProbe } from "../probe.js";
 import { readReportedHeader } from "../reportedBinding.js";
@@ -19,6 +20,7 @@ let personRefs: RefMap = {};
 let personSerial = 0;
 let lastListKey = "";
 let paneMemory: PaneMemory = emptyPaneMemory();
+let deltaCache: DeltaCache = emptyDelta();
 let paneSent = 0;
 let paneTimer = 0;
 
@@ -43,7 +45,26 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     void collectOpenChat(document, boundLabel, { requireLayout: true }).then((report) => {
       // Count only the rows still mounted after the reader scroll. That is a
       // different sample from the keyed history, and a quote is not direction.
-      sendResponse({ ...report, exclusion: countRowExclusion(document, boundLabel, { requireLayout: true }) });
+      // The delta keeps keys only. Unproven identity and a chat switch drop it.
+      const identity =
+        report.disposition === "CHAT_SWITCH"
+          ? "reconnected"
+          : report.disposition === "READ" && report.header === boundLabel && report.coverage.orderProven
+            ? "proven"
+            : report.coverage.orderProven
+              ? "unproven"
+              : "stale";
+      const delta = applyDelta(deltaCache, {
+        scope: boundLabel,
+        keys: report.coverage.keyIds,
+        identity
+      });
+      deltaCache = delta.cache;
+      sendResponse({
+        ...report,
+        exclusion: countRowExclusion(document, boundLabel, { requireLayout: true }),
+        delta: { added: delta.added.length, invalidated: delta.invalidated, reason: delta.reason }
+      });
     });
     return true;
   }
@@ -67,7 +88,10 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       boundLabel = typeof message.boundLabel === "string" ? message.boundLabel : "";
       watchMode = message.mode === "metadata" ? "metadata" : "messages";
       startWatching();
-    } else stopWatching();
+    } else {
+      deltaCache = emptyDelta();
+      stopWatching();
+    }
     sendResponse({ ok: true });
   }
 });
