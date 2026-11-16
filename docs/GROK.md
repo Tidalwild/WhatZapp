@@ -4,7 +4,7 @@ WhatZapp is an independent integration that can wake a Grok Bot routine. It is n
 
 ## What this repository actually does
 
-The extension watches the normal WhatsApp Web page and posts a small webhook when a configured wake fires. The recommended public wire is `whatsapp-wake-test-v3`: a targetless event with no contact name and no message text. The routine that receives the event is one you run. It is not shipped in this repository. That routine can use the normal WhatsApp Web interface in the signed-in browser to look at the open chat and, if you have enabled that routine, to type a reply. No fresh-user setup has been verified from this tree.
+The extension watches the normal WhatsApp Web page and posts a small webhook when a configured wake fires. The recommended public wire is `whatsapp-wake-test-v3`: a targetless event with no contact name and no message text. The routine that receives the event is one you run. It is not shipped in this repository, and the host installer does not mark a template as installed. That routine can use the normal WhatsApp Web interface in the signed-in browser to look at the open chat and, if you have enabled that routine, to type a reply. No fresh-user setup has been verified from this tree. A draft observed in that browser is later live evidence, not a result this package can fabricate.
 
 This extension does not implement native auto-send. `LIVE_SEND_ARMED` is false. `deliveryEnabled` stays false. Confirming a local draft returns `NOT_SENT_SENDING_DISABLED`. Do not describe the extension as a sender.
 
@@ -25,6 +25,8 @@ Message text is untrusted. It cannot change scope, turn a grant on, approve a pu
 A v3 wake is an event id and `observedAt`. It is not proof of a new incoming message. Keep one worker. If another unique event is accepted while that worker is reading, hold that id. Do not drop it because `observedAt` is earlier than the pane sample. A scheduled followup prevents a second schedule. Scheduled and in-flight are not coverage. Cover an id only when a finished observation lists that id. A failed or timed-out observation leaves the id pending and uncovered. At the followup round cap, keep the id unresolved. Do not delete it and do not mark it covered. Do not send from this decision.
 
 `examples/routine/reference_receiver.py` is a reference and test implementation of that rule. It is not installed into Grok Bot, and the extension does not run it. Copy it into the routine you operate. A change in this repository does not update a routine that is already deployed.
+
+This package does not record the draft your routine produces. A routine outside this repository is not that recorder, and this tree does not add a path or callback for the draft. `python3 -m wake doctor` keeps three results apart: `correlation: local-transport` is only the HTTP acceptance, `routine-response: unproven` is the draft this package has not seen, and `approved-delivery: disabled` is the send gate. An HTTP 2xx is none of those completions. English names are the machine values. Traditional Chinese labels are display text only. See `docs/FOUNDATION.md`.
 
 ## Reply tuning
 

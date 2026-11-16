@@ -11,6 +11,9 @@ from wake.client import WebhookClient
 from wake.clock import Clock, iso
 from wake.config import load_config, transmission_ready, valid_url
 from wake.envelope import build, new_event_id
+from wake.doctor import diagnose, recover, rollback_report
+from wake.hostinstall import check_main, install_main
+from wake.setupcheck import run as setup_check
 from wake.lifecycle import (
     ObserveOptions,
     clear_stop,
@@ -38,6 +41,18 @@ def main(argv=None, env=None) -> int:
     source = os.environ if env is None else env
     command = args[1] if len(args) > 1 else "status"
     rest = args[2:]
+    if command == "setup-check":
+        return setup_check(source)
+    if command == "install-check":
+        return check_main(rest)
+    if command == "host-install":
+        return install_main(rest)
+    if command == "doctor":
+        return _doctor_command(source, rest)
+    if command == "recover":
+        return _recover_command(source, rest)
+    if command == "rollback":
+        return _rollback_command(source, rest)
     if command == "status":
         return status(source)
     if command == "probe":
@@ -72,7 +87,7 @@ def main(argv=None, env=None) -> int:
         return permit_open_command(source, rest)
     print(
         "usage: python -m wake "
-        "[status|probe|observe|stop|resume|flush|ingest|bind|read|page|bridge|routine|permit-open]"
+        "[setup-check|install-check|host-install|doctor|recover|rollback|status|probe|observe|stop|resume|flush|ingest|bind|read|page|bridge|routine|permit-open]"
     )
     return 2
 
@@ -562,6 +577,53 @@ def _page_command(env: dict, rest: list) -> int:
         print("blocked: page requires --snapshot. Nothing was sent.")
         return 2
     return page(env, Path(parsed.snapshot))
+
+
+def _package_root() -> Path:
+    return Path(__file__).resolve().parents[1]
+
+
+def _doctor_command(env: dict, rest: list) -> int:
+    if rest:
+        print("usage: python -m wake doctor")
+        return 2
+    code, text = diagnose(env, store_path(env), _package_root())
+    print(text, end="")
+    return code
+
+
+def _recover_command(env: dict, rest: list) -> int:
+    logged_out = False
+    identity = "unchecked"
+    index = 0
+    while index < len(rest):
+        token = rest[index]
+        if token == "--logged-out":
+            logged_out = True
+            index += 1
+            continue
+        if token == "--identity" and index + 1 < len(rest) and rest[index + 1] == "mismatch":
+            identity = "mismatch"
+            index += 2
+            continue
+        print("usage: python -m wake recover [--logged-out] [--identity mismatch]")
+        return 2
+    code, text = recover(env, store_path(env), _package_root(), logged_out=logged_out, identity=identity)
+    print(text, end="")
+    return code
+
+
+def _rollback_command(env: dict, rest: list) -> int:
+    if rest == ["--drop-local-state"]:
+        drop = True
+    elif not rest:
+        drop = False
+    else:
+        print("usage: python -m wake rollback [--drop-local-state]")
+        return 2
+    _code, text = rollback_report(store_path(env), _package_root(), drop=drop)
+    print(text, end="")
+    return 0
 
 
 def _read_command(rest: list) -> int:

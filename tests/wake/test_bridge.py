@@ -21,6 +21,7 @@ from tests.wake.support import Scripted, pipeline
 MARKER = "secret-injected-preview"
 OTHER = "secret-sam-preview"
 REPO = Path(__file__).resolve().parents[2]
+FIXTURE_EXTENSION = "a" * 32
 
 
 class BridgeTests(unittest.TestCase):
@@ -152,7 +153,7 @@ class BridgeTests(unittest.TestCase):
         home = _private_dir()
         self.addCleanup(lambda: _remove(home))
         completed = subprocess.run(
-            ["sh", str(REPO / "scripts/install-wake-bridge.sh"), "--home", str(home), "--repo", str(REPO)],
+            ["sh", str(REPO / "scripts/install-wake-bridge.sh"), "--home", str(home), "--repo", str(REPO), "--extension-id", FIXTURE_EXTENSION],
             cwd=REPO,
             env={"PATH": os.environ.get("PATH", ""), "HOME": str(home), "XDG_CONFIG_HOME": str(home / ".config")},
             capture_output=True,
@@ -161,7 +162,8 @@ class BridgeTests(unittest.TestCase):
         )
         self.assertEqual(completed.returncode, 0, completed.stderr)
         manifest = json.loads((home / ".config/chromium/NativeMessagingHosts/com.draft_bridge.wake.json").read_text(encoding="utf-8"))
-        self.assertEqual(manifest["allowed_origins"], ["chrome-extension://djilkjcfdolfdmeeildoamafheooaalj/"])
+        self.assertEqual(manifest["allowed_origins"], [f"chrome-extension://{FIXTURE_EXTENSION}/"])
+        self.assertNotIn(str(REPO), Path(manifest["path"]).read_text(encoding="utf-8"))
         self.assertEqual(manifest["name"], "com.draft_bridge.wake")
         wrapper = Path(manifest["path"]).read_text(encoding="utf-8")
         blob = wrapper + json.dumps(manifest) + completed.stdout + completed.stderr
@@ -208,7 +210,7 @@ class BridgeTests(unittest.TestCase):
         store.mkdir()
         canary = home / "shell-canary"
         completed = subprocess.run(
-            ["sh", str(REPO / "scripts/install-wake-bridge.sh"), "--home", str(home), "--repo", str(REPO)],
+            ["sh", str(REPO / "scripts/install-wake-bridge.sh"), "--home", str(home), "--repo", str(REPO), "--extension-id", FIXTURE_EXTENSION],
             cwd=REPO,
             env={"PATH": os.environ.get("PATH", ""), "HOME": str(home), "XDG_CONFIG_HOME": str(home / ".config")},
             capture_output=True,

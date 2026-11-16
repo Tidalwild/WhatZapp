@@ -120,9 +120,17 @@ class Outbox:
             for raw in data["items"]:
                 item = Item.from_dict(raw)
                 if item.state == "in_flight":
-                    item.state = "retryable"
-                    item.next_attempt_at = self.clock.now()
-                    item.reason = "RESTART"
+                    # The attempt was already counted before the post returned.
+                    # At the cap, do not schedule another post. Below the cap,
+                    # wait out the same backoff. An acked or rejected row is
+                    # left unchanged above this branch.
+                    if item.attempts >= self.max_attempts:
+                        item.state = "rejected"
+                        item.reason = "GAVE_UP"
+                    else:
+                        item.state = "retryable"
+                        item.next_attempt_at = self.clock.now() + delay_seconds(max(item.attempts, 1))
+                        item.reason = "RESTART"
                 items[item.event_id] = item
             self.items = items
             self.gaps = list(data.get("gaps") or [])

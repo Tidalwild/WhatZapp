@@ -1,5 +1,6 @@
 from wake.android import from_listener
 from wake.clock import iso
+from wake.evidence import stored_reason
 from wake.envelope import CHAT_REF, build, build_v2, build_v3, new_event_id, validate
 from wake.log import Log
 from wake.model import Observation, ParseFailure
@@ -284,13 +285,7 @@ class Pipeline:
 
 
 def _stored_reason(result) -> str:
-    if result.classification == "transport":
-        return "transport-accepted"
-    if result.classification == "legacy-409":
-        return "legacy-409"
-    if result.duplicate:
-        return "duplicate"
-    return "acked"
+    return stored_reason(result.classification, result.duplicate)
 
 
 def _draft(event_id: str) -> dict:
