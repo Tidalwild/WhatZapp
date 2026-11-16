@@ -13,6 +13,7 @@ from pathlib import Path
 from wake import __version__
 from wake.bridge import read_handshake, read_host
 from wake.config import load_config, valid_url
+from wake.composer import composer_event, composer_state
 from wake.evidence import CONTRACT
 from wake.ledger import summary as late_summary
 from wake.recovery import (
@@ -29,6 +30,7 @@ from wake.setupcheck import _extension_version, _send_armed
 RUNTIME_NAMES = (
     "STOP",
     "binding.json",
+    "composer-sample.json",
     "drafts.json",
     "event-ids.json",
     "event-ledger.json",
@@ -80,6 +82,9 @@ def diagnose(env: dict, store: Path, root: Path, loaded_extension: str = "", res
         f"receiver: {_receiver(config)}",
         "routine: external",
         "routine-response: unproven",
+        f"composer: {composer_state(store)}",
+        f"composer-event: {composer_event(store)}",
+        "response-absence: not-inability",
         f"correlation: {_correlation(store)}",
         f"approved-delivery: {'blocked-send-armed' if armed == 'true' else 'disabled'}",
         f"live-send-armed: {armed}",

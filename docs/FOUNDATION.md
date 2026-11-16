@@ -111,7 +111,7 @@ Loading the unpacked extension and signing in to WhatsApp are still done in your
 ## Three results that are not the same
 
 - **Correlation only.** An outbox row with reason `transport-accepted` is local status that an HTTP post was accepted. `python3 -m wake doctor` prints `correlation: local-transport`. That is not a draft.
-- **Bot response.** Your own routine receives the wake and can read the visible chat and draft in the composer. See `docs/GROK.md`. This package does not currently record that draft. `bot-response: unproven` and `response-recorder: not-in-this-package` mean the recorder is unfinished. They do not mean your routine is unable to draft.
+- **Bot response.** Your own routine receives the wake and can read the visible chat and draft in the composer. See `docs/GROK.md`. `response-recorder: not-in-this-package` still means there is no callback for that draft. A textbox sample can be `empty`, `occupied`, or `unmeasured` and can name a wake event id. `routine-response: unproven` stays true for every sample. `composer: not-observed` with `response-absence: not-inability` means the textbox was not observed. It does not mean your routine is unable to draft. The sample does not cover the event.
 - **Approved delivery.** Sending is a later gate. `approved-delivery: disabled` while `LIVE_SEND_ARMED` is false. A draft is not a send, and an HTTP 2xx is not delivery.
 
 No new credential form and no stand-in response endpoint are added here. A routine that already drafts outside this repository is not a recorder in this package. Where a later integration could observe that draft is unresolved. This tree does not name a file or callback for it.

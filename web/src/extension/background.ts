@@ -1,4 +1,5 @@
 import { sanitizeListSignal } from "../bridgeSignal.js";
+import { composerFrame } from "../composerSample.js";
 import { Engine } from "../engine.js";
 import { acceptSurface, closedSurface } from "../sendSurface.js";
 import { bridgeLifecycle, classifyHostExit, safeHostDetail, type HostCause } from "../hostStatus.js";
@@ -113,7 +114,9 @@ async function dispatch(message: { type?: string; [key: string]: unknown }): Pro
       return { view: engine.view(), disposition };
     }
     case "deliver-reply": {
-      const delivery = engine.attemptLiveDelivery(String(message.replyText ?? ""), await sendSurface());
+      const surface = await sendSurface();
+      noteComposer(surface.composer);
+      const delivery = engine.attemptLiveDelivery(String(message.replyText ?? ""), surface);
       if (delivery.persisted) await persist();
       return { delivery, view: engine.view() };
     }
@@ -199,6 +202,8 @@ async function readBoundChat(): Promise<unknown> {
   if (!tab.ok) return { error: tab.error, view: engine.view(), bridge: bridgeView() };
   try {
     const report = await chrome.tabs.sendMessage(tab.id, { type: "do-read", boundLabel: binding.visibleHeader });
+    const surface = await sendSurface();
+    noteComposer(surface.composer);
     const replyGate = engine.assessAutomaticReply(report);
     return { read: report, replyGate, view: engine.view(), bridge: bridgeView() };
   } catch (error) {
@@ -767,6 +772,21 @@ function forwardList(raw: unknown): string {
     return "HOST_PROTOCOL";
   }
   return "FORWARDED";
+}
+
+function noteComposer(state: string): void {
+  const frame = composerFrame(state, lastEvent);
+  if (!frame || !engine.view().settings.collectionEnabled) return;
+  ensurePort();
+  if (!port) return;
+  try {
+    port.postMessage(frame);
+  } catch {
+    port = null;
+    hostCause = "HOST_PROTOCOL";
+    holdConnect = true;
+    rememberBridge();
+  }
 }
 
 async function sendSurface() {

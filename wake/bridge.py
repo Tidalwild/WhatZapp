@@ -11,6 +11,7 @@ import re
 import time
 from pathlib import Path
 
+from wake.composer import note_sample
 from wake.config import load_config, transmission_ready
 from wake.lifecycle import outbox_stopped, stop_requested
 from wake.listchange import apply_list_change
@@ -38,6 +39,7 @@ _LIST = frozenset({"v", "kind", "layout", "boundLabel", "matches", "position", "
 _PERSON = frozenset({"v", "kind", "chatRef", "mark", "count"})
 _LIST_CHANGE = frozenset({"v", "kind", "mark", "count"})
 _PANE = frozenset({"v", "kind", "generation"})
+_COMPOSER = frozenset({"v", "kind", "state", "event"})
 _CHANGES = frozenset({"baseline", "up", "down", "clear", "same", "held"})
 _WHEN = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$")
 
@@ -152,6 +154,8 @@ def accept(store: Path, config, pipeline, value) -> Outcome:
         return accept_list_change(store, config, pipeline, value)
     if kind == "pane-hint":
         return accept_pane(store, config, pipeline, value)
+    if kind == "composer-sample":
+        return accept_composer(store, pipeline, value)
     if config.wire == "list" and kind == "list-signal":
         return Outcome("SCHEMA_HELD")
     if kind != "list-signal" or value.get("v") != 1 or set(value) - _LIST:
@@ -242,6 +246,22 @@ def accept_pane(store: Path, config, pipeline, value) -> Outcome:
             return Outcome("STOPPED")
     result = apply_pane_hint(store, hint, pipeline=pipeline, wire=config.wire)
     return Outcome(str(result["disposition"]), bool(result.get("posted")), event=str(result.get("event") or ""))
+
+
+def accept_composer(store: Path, pipeline, value) -> Outcome:
+    """Record a textbox state. Extra fields, including any body, are refused."""
+
+    if value.get("v") != 1 or set(value) - _COMPOSER or "state" not in value:
+        return Outcome("UNTRUSTED_FIELD")
+    event = value.get("event", "")
+    if not isinstance(event, str):
+        return Outcome("UNPARSEABLE")
+    noted = note_sample(store, value.get("state"), event, pipeline.outbox.clock.now())
+    if noted == "NOTED":
+        return Outcome("COMPOSER_NOTED")
+    if noted == "UNREADABLE":
+        return Outcome("UNREADABLE")
+    return Outcome("UNPARSEABLE")
 
 
 def take_open_permit(store: Path, value) -> Outcome:
