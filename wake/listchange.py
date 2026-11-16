@@ -12,6 +12,7 @@ from pathlib import Path
 
 from wake.clock import iso
 from wake.envelope import build_v3
+from wake.ledger import note_held, note_posted, outbox_outstanding, worker_locked
 
 STATE_NAME = "list-change.json"
 COUNT_MAX = 9999
@@ -42,15 +43,42 @@ def apply_list_change(directory: Path, hint, *, pipeline, wire: str) -> dict:
     if count < previous:
         _save(directory, count, generation)
         return _sample("COUNT_DOWN", count=count, prior=previous, stored=count, change="down", at=at)
+    if outbox_outstanding(pipeline):
+        return _sample("COUNT_HELD", count=count, prior=previous, stored=previous, change="held", at=at, covered=False)
+    locked = worker_locked(directory)
+    if locked is None:
+        return _sample("UNREADABLE", count=count, prior=previous, change="held", at=at, covered=False)
+    key = f"list:{previous}:{count}:{generation}"
+    observed = int(pipeline.outbox.clock.now())
+    if locked:
+        outcome, event = note_held(directory, key, observed)
+        if outcome in {"HELD", "COALESCED", "DUPLICATE"}:
+            _save(directory, count, generation)
+        disposition = "NO_NEW" if outcome == "DUPLICATE" else "HELD"
+        if outcome not in {"HELD", "COALESCED", "DUPLICATE"}:
+            disposition = "UNREADABLE"
+            event = ""
+        return _sample(
+            disposition,
+            count=count,
+            prior=previous,
+            stored=count if disposition != "UNREADABLE" else previous,
+            change="held",
+            posted=False,
+            event=event,
+            covered=False,
+            at=at,
+        )
     result = pipeline.enqueue_list_change(_replaces(previous, count, generation))
     if result.disposition not in ("enqueued", "replaced") or not result.event_id:
         if result.reason == "DEBOUNCED":
-            return _sample("COUNT_HELD", count=count, prior=previous, change="held", at=at)
-        return _sample("COUNT_UP", count=count, prior=previous, change="up", forward="error", at=at)
+            return _sample("COUNT_HELD", count=count, prior=previous, change="held", at=at, covered=False)
+        return _sample("COUNT_UP", count=count, prior=previous, change="up", forward="error", at=at, covered=False)
     pipeline.flush()
     item = pipeline.outbox.items.get(result.event_id)
     posted = item is not None and item.state == "acked"
     if posted:
+        note_posted(directory, result.event_id, key, observed)
         _save(directory, count, generation + 1)
     return _sample(
         "COUNT_UP",
@@ -61,6 +89,7 @@ def apply_list_change(directory: Path, hint, *, pipeline, wire: str) -> dict:
         posted=posted,
         forward="accepted" if posted else "attempted",
         event=result.event_id,
+        covered=False,
         at=at,
     )
 

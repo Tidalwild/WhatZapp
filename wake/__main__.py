@@ -355,7 +355,7 @@ def _print_bind(result: tuple) -> int:
     print("sends-whatsapp: no")
     if _binding is not None:
         print(f"mode: {_binding.get('mode', 'messages')}")
-        print(f"direction: {'unproven' if _binding.get('mode') == 'metadata' else 'proven'}")
+        print("direction: unproven")
     return 0 if reason == "BOUND" else 2
 
 

@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
+import { createHash } from "node:crypto";
 import { Engine } from "../src/engine.js";
 import { FilteringLog } from "../src/log.js";
-import { HANDLER, RETENTION_DEFAULT, SEND_POLICY, type ProbeSnapshot, type State } from "../src/model.js";
+import { HANDLER, placeholder, RETENTION_DEFAULT, SEND_POLICY, type Draft, type ProbeSnapshot, type State } from "../src/model.js";
 
 function harness(limits?: { messages: number; fingerprints: number }) {
   let n = 0;
@@ -53,11 +54,13 @@ describe("web capture", () => {
     expect(engine.view().historyComplete).toBe(false);
     expect(engine.view().verifiedRemoteRecipient).toBe(false);
     const second = await engine.observe(shot([...seeds, ["fixture chat", "arrived-three", "09:02"]]));
-    expect(second.disposition).toBe("CAPTURED");
-    expect(engine.view().messages.map((message) => message.text)).toEqual(["arrived-three"]);
+    expect(second.disposition).toBe("SCOPE_OFF");
+    expect(second.captured).toBe(0);
+    expect(engine.view().messages).toEqual([]);
+    expect(JSON.stringify(engine.dump())).not.toContain("arrived-three");
     const replay = await engine.observe(shot([...seeds, ["fixture chat", "arrived-three", "09:02"]]));
     expect(replay.disposition).toBe("DUPLICATE");
-    expect(engine.view().messages).toHaveLength(1);
+    expect(engine.view().messages).toEqual([]);
   });
 
   it("flags identical sender, text, and time instead of inventing a second id", async () => {
@@ -74,7 +77,8 @@ describe("web capture", () => {
     expect(repeated.disposition).toBe("AMBIGUOUS_REPEAT");
     expect(engine.view().messages).toEqual([]);
     const clean = await engine.observe(shot([...seeds, ["fixture chat", "arrived-three", "09:02"]]));
-    expect(clean.disposition).toBe("CAPTURED");
+    expect(clean.disposition).toBe("SCOPE_OFF");
+    expect(engine.view().messages).toEqual([]);
   });
 
   it("rejects two different texts that share a sender and a clock, and does not draft", async () => {
@@ -95,10 +99,11 @@ describe("web capture", () => {
     expect(JSON.stringify(engine.view())).not.toContain("one-text");
     expect(JSON.stringify(engine.view())).not.toContain("other-text");
     const clean = await engine.observe(shot([...seeds, ["fixture chat", "arrived-three", "09:02"]]));
-    expect(clean.disposition).toBe("CAPTURED");
+    expect(clean.disposition).toBe("SCOPE_OFF");
+    expect(JSON.stringify(engine.view())).not.toContain("arrived-three");
   });
 
-  it("keeps the same text at a later visible time", async () => {
+  it("does not store the same text at a later visible time", async () => {
     const { engine } = harness();
     await arm(engine);
     await engine.observe(shot(seeds));
@@ -110,8 +115,9 @@ describe("web capture", () => {
         ["fixture chat", "arrived-three", "09:10"]
       ])
     );
-    expect(later.disposition).toBe("CAPTURED");
-    expect(engine.view().messages.map((message) => message.timeText)).toEqual(["09:02", "09:10"]);
+    expect(later.disposition).toBe("SCOPE_OFF");
+    expect(engine.view().messages).toEqual([]);
+    expect(JSON.stringify(engine.dump())).not.toContain("arrived-three");
   });
 
   it("reports an empty or loading read as incomplete and does not treat it as new history", async () => {
@@ -175,47 +181,44 @@ describe("web capture", () => {
     });
     expect(bad.disposition).toBe("TIME_AMBIGUOUS");
     const again = await engine.observe(shot([...seeds, ["fixture chat", "arrived-three", "09:02"]]));
-    expect(again.disposition).toBe("CAPTURED");
+    expect(again.disposition).toBe("SCOPE_OFF");
+    expect(engine.view().messages).toEqual([]);
   });
 
-  it("stores locally while export is off, and drafts only after export is enabled", async () => {
+  it("does not store or export a label-matched tail", async () => {
     const { engine } = harness();
     await arm(engine);
     expect(engine.view().settings.exportEnabled).toBe(false);
     await engine.observe(shot(seeds));
-    await engine.observe(shot([...seeds, ["fixture chat", "arrived-three", "09:02"]]));
-    expect(engine.view().messages).toHaveLength(1);
+    const captured = await engine.observe(shot([...seeds, ["fixture chat", "arrived-three", "09:02"]]));
+    expect(captured.disposition).toBe("SCOPE_OFF");
+    expect(engine.view().messages).toEqual([]);
     expect(engine.view().drafts).toEqual([]);
     expect(engine.setExport(true)).toBe("export-on");
     const replay = await engine.observe(shot([...seeds, ["fixture chat", "arrived-three", "09:02"]]));
     expect(replay.disposition).toBe("DUPLICATE");
-    expect(engine.view().drafts).toEqual([]);
     await engine.observe(shot([...seeds, ["fixture chat", "arrived-three", "09:02"], ["fixture chat", "after-export", "09:03"]]));
-    expect(engine.view().drafts).toHaveLength(1);
-    const draft = engine.view().drafts[0];
-    expect(draft.handler).toBe(HANDLER);
-    expect(draft.body).toContain("LOCAL MOCK");
-    expect(draft.body).not.toContain("after-export");
-    expect(draft.scopeId).toBe(engine.view().binding?.localScopeId);
+    expect(engine.view().drafts).toEqual([]);
+    expect(JSON.stringify(engine.dump())).not.toContain("arrived-three");
+    expect(JSON.stringify(engine.dump())).not.toContain("after-export");
+    expect(JSON.stringify(engine.dump())).not.toContain("LOCAL MOCK");
   });
 
   it("refuses a mismatched, replayed, expired, or tampered draft without sending", async () => {
     const { engine, clock } = harness();
     await arm(engine);
-    engine.setExport(true);
-    await engine.observe(shot(seeds));
-    await engine.observe(shot([...seeds, ["fixture chat", "arrived-three", "09:02"]]));
-    const draft = engine.dump().drafts[0];
-    expect((await engine.confirmDraft(draft.commandId, "different")).reason).toBe("CONFIRMATION_MISMATCH");
-    const first = await engine.confirmDraft(draft.commandId, draft.body);
+    const held = await planted(engine, clock.t);
+    const draft = held.view().drafts[0];
+    expect((await held.confirmDraft(draft.commandId, "different")).reason).toBe("CONFIRMATION_MISMATCH");
+    const first = await held.confirmDraft(draft.commandId, draft.body);
     expect(first).toEqual({ kind: "NOT_SENT_SENDING_DISABLED", reason: "sending-disabled" });
-    expect((await engine.confirmDraft(draft.commandId, draft.body)).reason).toBe("REPLAY");
-    const tampered = engine.dump();
+    expect((await held.confirmDraft(draft.commandId, draft.body)).reason).toBe("REPLAY");
+    const tampered = held.dump();
     tampered.consumedCommandIds = [];
     tampered.drafts[0].body = "rewritten";
     const spoof = new Engine({ state: tampered, now: () => clock.t });
     expect((await spoof.confirmDraft(draft.commandId, "rewritten")).reason).toBe("BAD_SIGNATURE");
-    const expired = engine.dump();
+    const expired = held.dump();
     expired.consumedCommandIds = [];
     expired.drafts[0].expiresAtMillis = clock.t - 5;
     const aged = new Engine({ state: await resigned(expired), now: () => clock.t });
@@ -223,25 +226,21 @@ describe("web capture", () => {
   });
 
   it("rejects another handler, a purged event, and a rebound scope", async () => {
-    const { engine } = harness();
+    const { engine, clock } = harness();
     await arm(engine);
-    engine.setExport(true);
-    await engine.observe(shot(seeds));
-    await engine.observe(shot([...seeds, ["fixture chat", "arrived-three", "09:02"]]));
-    const dumped = engine.dump();
+    const held = await planted(engine, clock.t);
+    const dumped = held.dump();
     dumped.drafts[0].handler = "other-handler";
-    const spoofed = new Engine({ state: dumped, secretHex: "ab".repeat(32) });
+    const spoofed = new Engine({ state: dumped, secretHex: "ab".repeat(32), now: () => clock.t });
     expect((await spoofed.confirmDraft(dumped.drafts[0].commandId, dumped.drafts[0].body)).reason).toBe("WRONG_HANDLER");
-    engine.purgeBodies();
-    expect((await engine.confirmDraft(dumped.drafts[0].commandId, dumped.drafts[0].body)).reason).toBe("EVENT_UNAVAILABLE");
+    held.purgeBodies();
+    expect((await held.confirmDraft(dumped.drafts[0].commandId, dumped.drafts[0].body)).reason).toBe("EVENT_UNAVAILABLE");
     const again = harness();
     await arm(again.engine);
-    again.engine.setExport(true);
-    await again.engine.observe(shot(seeds));
-    await again.engine.observe(shot([...seeds, ["fixture chat", "arrived-three", "09:02"]]));
-    const command = again.engine.dump().drafts[0];
-    again.engine.bind("fixture chat", "Me");
-    expect((await again.engine.confirmDraft(command.commandId, command.body)).reason).toBe("WRONG_RECIPIENT");
+    const rebound = await planted(again.engine, again.clock.t);
+    const command = rebound.view().drafts[0];
+    rebound.bind("fixture chat", "Me");
+    expect((await rebound.confirmDraft(command.commandId, command.body)).reason).toBe("WRONG_RECIPIENT");
   });
 
   it("treats message text as data and leaves it out of the log", async () => {
@@ -252,7 +251,9 @@ describe("web capture", () => {
     await engine.observe(shot([...seeds, ["fixture chat", text, "09:20"]]));
     expect(engine.view().settings.exportEnabled).toBe(false);
     expect(engine.view().settings.collectionEnabled).toBe(true);
-    expect(engine.view().messages.map((message) => message.text)).toEqual([text]);
+    expect(engine.view().lastDisposition).toBe("SCOPE_OFF");
+    expect(engine.view().messages).toEqual([]);
+    expect(JSON.stringify(engine.dump())).not.toContain(text);
     const lines = log.lines.join("\n");
     expect(lines).not.toContain("<script");
     expect(lines).not.toContain("ignore previous");
@@ -266,10 +267,19 @@ describe("web capture", () => {
     await engine.observe(shot(seeds));
     await engine.observe(shot([...seeds, ["fixture chat", "one", "09:02"]]));
     await engine.observe(shot([...seeds, ["fixture chat", "one", "09:02"], ["fixture chat", "two", "09:03"]]));
-    const live = engine.dump().messages.filter((message) => !message.purged);
-    expect(live.map((message) => message.text)).toEqual(["two"]);
-    expect(engine.dump().gaps.some((gap) => gap.reason === "STORE_BOUND")).toBe(true);
+    expect(engine.view().messages).toEqual([]);
+    expect(JSON.stringify(engine.dump())).not.toContain("\"text\":\"two\"");
     const dumped = engine.dump();
+    dumped.messages.push({
+      eventId: "id-planted-body",
+      scopeId: dumped.binding?.localScopeId ?? "",
+      sender: "",
+      text: "two",
+      timeText: "",
+      contentHash: "planted",
+      capturedAtMillis: clock.t,
+      purged: false
+    });
     dumped.outbox.push({ eventId: "missing", idempotencyKey: "missing", state: "IN_FLIGHT", attempts: 1 });
     const reloaded = new Engine({ state: dumped, now: () => clock.t, secretHex: dumped.keyMaterial });
     reloaded.restart();
@@ -388,6 +398,44 @@ describe("web capture", () => {
     expect(JSON.stringify(paused.view())).not.toContain("visible region did not match the probe");
   });
 
+  it("does not treat a label, a quote, or an enrolled header as incoming", async () => {
+    const { engine } = harness();
+    await arm(engine);
+    await engine.observe(shot(seeds));
+    const quoted = "Quoted message";
+    const blocked = await engine.observe(shot([...seeds, ["fixture chat", quoted, "09:02"]]));
+    expect(blocked.disposition).toBe("SCOPE_OFF");
+    expect(JSON.stringify(engine.dump())).not.toContain(quoted);
+    engine.bind("fixture-chat", "Me");
+    expect(engine.setCollection(true)).toBe("collection-on");
+    engine.setScope({ mode: "allowlist", allow: ["fixture-chat"], deny: [], groups: "exclude", maxReplies: 1 });
+    const rows: Array<[string, string, string]> = [
+      ["fixture-chat", "seed-one", "09:00"],
+      ["fixture-chat", "seed-two", "09:01"]
+    ];
+    expect((await engine.observe(shot(rows, "fixture-chat"))).disposition).toBe("BASELINE");
+    const unnamed = await engine.observe(shot([...rows, ["fixture-chat", quoted, "09:02"]], "fixture-chat"));
+    expect(unnamed.disposition).toBe("IDENTITY_UNPROVEN");
+    expect(engine.view().messages).toEqual([]);
+    const contact = createHash("sha256").update("fixture-e164-not-a-phone").digest("hex");
+    const profile = createHash("sha256").update("fixture-profile-not-a-phone").digest("hex");
+    expect(engine.enrollIdentity({
+      contactDigest: contact,
+      profileDigest: profile,
+      openedHeader: "fixture-chat",
+      openedByNumber: true
+    })).toBe("IDENTITY_ENROLLED");
+    const still = await engine.observe(shot([...rows, ["fixture-chat", quoted, "09:02"], ["fixture-chat", quoted, "09:04"]], "fixture-chat"));
+    expect(still.disposition).toBe("DIRECTION_UNPROVEN");
+    expect(engine.view().drafts).toEqual([]);
+    expect(engine.view().messages).toEqual([]);
+    const blob = JSON.stringify(engine.dump());
+    expect(blob).not.toContain(quoted);
+    expect(JSON.stringify(engine.view())).not.toContain(contact);
+    expect(engine.setExport(true)).toBe("export-on");
+    expect(engine.view().drafts).toEqual([]);
+  });
+
   it("records an unrecognized page without storing rows", async () => {
     const { engine } = harness();
     await arm(engine);
@@ -396,6 +444,42 @@ describe("web capture", () => {
     expect(engine.dump().baselineEstablished).toBe(false);
   });
 });
+
+async function planted(engine: Engine, now: number): Promise<Engine> {
+  const dumped = engine.dump();
+  const scopeId = dumped.binding?.localScopeId ?? "";
+  const eventId = "id-planted";
+  dumped.messages.push({
+    eventId,
+    scopeId,
+    sender: "",
+    text: "",
+    timeText: "",
+    contentHash: "planted",
+    capturedAtMillis: now,
+    purged: false
+  });
+  const draft: Draft = {
+    handler: HANDLER,
+    commandId: "cmd-planted",
+    inReplyToEventId: eventId,
+    scopeId,
+    body: placeholder(eventId),
+    expiresAtMillis: now + 60_000,
+    correlationId: eventId,
+    deviceId: dumped.settings.deviceId,
+    keyId: dumped.settings.keyId,
+    signature: ""
+  };
+  dumped.drafts.push(draft);
+  const signed = await resigned(dumped);
+  return new Engine({
+    state: signed,
+    now: () => now,
+    ids: () => "id-planted-next",
+    secretHex: signed.keyMaterial
+  });
+}
 
 async function resigned(state: State): Promise<State> {
   const { hmacHex } = await import("../src/crypto.js");

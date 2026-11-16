@@ -32,10 +32,12 @@ import json
 from pathlib import Path
 
 from wake.clock import iso
+from wake.ledger import note_held, note_posted, outbox_outstanding, worker_locked
 from wake.model import Observation
 from wake.policy import valid_label
 from wake.read import (
     bind_local,
+    hold_candidate,
     load_binding,
     preview_tail,
     read_snapshot,
@@ -69,9 +71,26 @@ def _tail(directory: Path, snapshot, allowlist: str, pipeline) -> dict:
     preview = preview_tail(directory, snapshot)
     if not preview.get("candidate"):
         return _public(preview["disposition"], signal="open-tail")
+    if outbox_outstanding(pipeline):
+        return _public("BUSY", signal="open-tail")
+    locked = worker_locked(directory)
+    if locked is None:
+        return _public("UNREADABLE", signal="open-tail")
+    key = f"tail:{int(preview['replaces'])}"
+    observed = int(pipeline.outbox.clock.now())
+    if locked:
+        outcome, event = note_held(directory, key, observed)
+        if outcome in {"HELD", "COALESCED", "DUPLICATE"}:
+            hold_candidate(directory, snapshot)
+        disposition = "NO_NEW" if outcome == "DUPLICATE" else "HELD"
+        if outcome not in {"HELD", "COALESCED", "DUPLICATE"}:
+            disposition = "UNREADABLE"
+            event = ""
+        return _public(disposition, signal="open-tail", event=event)
     posted, event_id = _post(pipeline, allowlist, int(preview["replaces"]))
     if not posted:
         return _public("WAKE_NOT_ACKED", signal="open-tail", posted=True)
+    note_posted(directory, event_id, key, observed)
     drafted = read_snapshot(directory, snapshot, pipeline.outbox, event_id)
     return _public(
         drafted["disposition"],
@@ -472,6 +491,7 @@ def _public(
         "ack": ack,
         "forward": forward,
         "event": event,
+        "covered": False,
         "verifiedRemoteRecipient": False,
         "liveWhatsApp": False,
         "sendsWhatsApp": False,

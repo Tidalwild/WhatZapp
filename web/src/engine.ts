@@ -3,15 +3,11 @@ import { align, fingerprint } from "./dedup.js";
 import { FilteringLog } from "./log.js";
 import {
   canonicalDraft,
-  DRAFT_TTL,
   HANDLER,
   LIMITS,
-  placeholder,
   RETENTION_DEFAULT,
   SEND_POLICY,
   type Binding,
-  type Draft,
-  type OutboxItem,
   type ProbeSnapshot,
   type PublicView,
   type Slot,
@@ -366,18 +362,23 @@ export class Engine {
     }
     this.remember([...this.state.fingerprints, ...aligned.fresh]);
     const freshRows = directed.rows.slice(directed.rows.length - aligned.fresh.length);
-    let captured = 0;
-    for (const row of freshRows) {
-      if (row.direction !== "in") continue;
-      const message = await this.storeIncoming(row, binding.localScopeId);
-      captured += 1;
-      if (this.state.settings.exportEnabled) await this.exportOne(message);
-    }
+    const inbound = freshRows.filter((row) => row.direction === "in");
     if (parsed.skipped > 0) this.gap("SKIPPED_ROWS", "separator or header row ignored");
-    this.state.counters.captured += captured;
     this.state.counters.duplicates += aligned.duplicateCount;
-    const disposition = captured > 0 ? "CAPTURED" : "CONTEXT_ONLY";
-    return this.finish(disposition, captured, aligned.duplicateCount);
+    if (inbound.length === 0) return this.finish("CONTEXT_ONLY", 0, aligned.duplicateCount);
+    const label = binding.visibleHeader;
+    if (!contactInScope(this.state.scope, { label, kind: "direct" })) {
+      const reason = this.state.scope.mode === "off" ? "SCOPE_OFF" : "SCOPE_EXCLUDED";
+      this.gap(reason, "scope is required before a body is stored");
+      return this.finish(reason, 0, aligned.duplicateCount);
+    }
+    if (!remoteIdentityReady(this.state.identity, binding, this.state.scope)) {
+      this.gap("IDENTITY_UNPROVEN", "identity is required before a body is stored");
+      return this.finish("IDENTITY_UNPROVEN", 0, aligned.duplicateCount);
+    }
+    // A sender label, a clock, an unread mark, and quoted text are not incoming.
+    this.gap("DIRECTION_UNPROVEN", "a sender label is not incoming");
+    return this.finish("DIRECTION_UNPROVEN", 0, aligned.duplicateCount);
   }
 
   async confirmDraft(commandId: string, exactBody: string): Promise<AttemptResult> {
@@ -443,72 +444,6 @@ export class Engine {
     if (mode === "metadata") this.dropStaleLayoutGap();
     this.log.event("bind", { disposition: mode === "metadata" ? "metadata-scope" : "local-scope" });
     return binding;
-  }
-
-  private async storeIncoming(row: MessageRow, scopeId: string): Promise<StoredMessage> {
-    const message: StoredMessage = {
-      eventId: this.ids(),
-      scopeId,
-      sender: row.sender,
-      text: row.text,
-      timeText: row.timeText,
-      contentHash: row.fp,
-      capturedAtMillis: this.now(),
-      purged: false
-    };
-    this.state.messages.push(message);
-    const live = this.state.messages.filter((item) => !item.purged);
-    if (live.length > this.limits.messages) {
-      const drop = live.slice(0, live.length - this.limits.messages);
-      for (const item of drop) clearBody(item);
-      this.gap("STORE_BOUND", "oldest body dropped");
-    }
-    return message;
-  }
-
-  private async exportOne(message: StoredMessage): Promise<void> {
-    if (this.state.outbox.some((item) => item.idempotencyKey === message.eventId)) return;
-    const item: OutboxItem = {
-      eventId: message.eventId,
-      idempotencyKey: message.eventId,
-      state: "IN_FLIGHT",
-      attempts: 1
-    };
-    this.state.outbox.push(item);
-    if (this.state.outbox.length > LIMITS.drafts) this.state.outbox.splice(0, this.state.outbox.length - LIMITS.drafts);
-    const draft = await this.mockDraft(message);
-    if (!draft) {
-      item.state = "REJECTED";
-      this.log.event("export", { disposition: "rejected", handler: HANDLER });
-      return;
-    }
-    if (this.state.drafts.some((existing) => existing.commandId === draft.commandId)) {
-      item.state = "ACKED";
-      this.log.event("export", { disposition: "duplicate", duplicate: "1", handler: HANDLER });
-      return;
-    }
-    this.state.drafts.push(draft);
-    if (this.state.drafts.length > LIMITS.drafts) this.state.drafts.splice(0, this.state.drafts.length - LIMITS.drafts);
-    item.state = "ACKED";
-    this.log.event("export", { disposition: "draft", handler: HANDLER, state: "ACKED" });
-  }
-
-  private async mockDraft(message: StoredMessage): Promise<Draft | null> {
-    if (message.scopeId === "" || this.state.settings.deviceId === "") return null;
-    const unsigned: Draft = {
-      handler: HANDLER,
-      commandId: this.ids(),
-      inReplyToEventId: message.eventId,
-      scopeId: message.scopeId,
-      body: placeholder(message.eventId),
-      expiresAtMillis: this.now() + DRAFT_TTL,
-      correlationId: message.eventId,
-      deviceId: this.state.settings.deviceId,
-      keyId: this.state.settings.keyId,
-      signature: ""
-    };
-    unsigned.signature = await hmacHex(this.state.keyMaterial, canonicalDraft(unsigned));
-    return unsigned;
   }
 
   private remember(fps: string[]): void {
@@ -681,6 +616,7 @@ function direct(
   if (binding.mode === "metadata" || binding.selfLabel.trim() === "") {
     return { ok: false, reason: "DIRECTION_UNPROVEN" };
   }
+  // Label equality only classifies the row. It is not incoming proof.
   const directed: MessageRow[] = [];
   for (const row of rows) {
     let direction: "in" | "out";
