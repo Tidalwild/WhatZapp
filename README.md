@@ -44,7 +44,7 @@ In the popup, accept onboarding, bind the open chat, and leave collection off un
 
 ## Install the native host
 
-`scripts/install-wake-bridge.sh` registers the host. It does not contain a webhook URL. Copy `config/wake.env.example` or `.env.example` to an untracked file, set `WHATSAPP_WAKE_CONFIG` to that file, and fill the URL and credential there. `python3 -m wake status` reports whether a value is present. It does not print it.
+`scripts/install-wake-bridge.sh --extension-id ID` copies the host into your home and records the host and extension versions from this tree. `ID` is the id Chromium assigns after you load `web/dist` unpacked. This repository does not include one. The script does not contain a webhook URL. Copy `config/wake.env.example` or `.env.example` to an untracked file, set `WHATSAPP_WAKE_CONFIG` to that file, and fill the URL and credential there. `python3 -m wake status` reports whether a value is present. It does not print it. `python3 -m wake install-check` reports the copied files. `install-proven: files` is that copy, not a loaded browser.
 
 ```sh
 python3 -m wake status
@@ -54,7 +54,7 @@ With no URL, transmission stays blocked and nothing is sent. Leave `WHATSAPP_WAK
 
 `scripts/wake-setup.sh` prints the command sequence. It does not send a WhatsApp message.
 
-`python3 -m wake setup-check` reads this tree and reports the public limits. It does not call a webhook, open WhatsApp, or print a URL or credential. `result: public-package-ok` means the files agree. It prints `install-proven: no`. It is not a completed installation and it is not a bot response. `python3 -m wake doctor` is the redacted diagnosis. See `docs/FOUNDATION.md`.
+`python3 -m wake setup-check` reads this tree and reports the public limits. It does not call a webhook, open WhatsApp, or print a URL or credential. `result: public-package-ok` means the files agree. It prints `install-evidence: tree-only` and `install-proven: no`. It is not a completed installation and it is not a bot response. `python3 -m wake doctor` is the redacted diagnosis. See `docs/FOUNDATION.md`.
 
 ## Grok Bot
 

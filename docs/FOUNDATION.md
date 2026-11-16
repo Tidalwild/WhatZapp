@@ -18,6 +18,7 @@ Re-run the named tests after you change the tree. A row is unverified when this 
 | Direction | `docs/DIRECTION.md` and the web reader tests | Ambiguous rows stay unproven. Layout, a clock, and an unread mark are not incoming proof. |
 | Sending | `LIVE_SEND_ARMED = false` in `web/src/replyDelivery.ts` | Default off. The reference `request_send` returns `NOT_SENT`. |
 | Bot response | No module accepts a response callback | `response-interface: absent`. A caller-supplied dict is still unverified. |
+| Filesystem host install | `scripts/install-wake-bridge.sh` and `python3 -m wake install-check` | `install-proven: files` is the copied host and its version pair. It does not load a browser. |
 | Fresh install through a real reply | Not exercised here | `fresh-setup: unproven`. |
 | Another machine's deployment | Not in this repository | Unverified from this tree. |
 
@@ -93,7 +94,17 @@ One git checkout is the pair. There is no separate release tag claimed here.
 - Browser: Chromium that can load an unpacked Manifest V3 extension. Firefox, Safari, the WhatsApp desktop app, and mobile apps are untested.
 - Webhook: yours, HTTPS, or HTTP only on `127.0.0.1` or `localhost` with a port. The value stays outside git.
 
-`result: public-package-ok` means those file checks agree. It also prints `install-proven: no`. A clean tree with no credential is not a completed installation, not a linked browser, and not a response from your routine.
+`result: public-package-ok` means those file checks agree. It also prints `install-evidence: tree-only` and `install-proven: no`. A clean tree with no credential is not a completed installation, not a linked browser, and not a response from your routine.
+
+## Filesystem install
+
+`scripts/install-wake-bridge.sh --extension-id ID` copies this host into the home given by `--home`, or `$HOME` when that flag is omitted. `ID` is the extension id Chromium shows after you load `web/dist` unpacked. This package does not ship an extension id, a bot account, or a routine template.
+
+The copy keeps its own Python package. Repeating the command replaces that copy and the native-host manifests. It does not read or delete the credential file, the store, or any other file. `scripts/install-wake-bridge.sh --uninstall` removes the copied host and a native-host manifest only when that manifest still points at this host. The credential file, the store, and unknown files stay.
+
+`python3 -m wake install-check --home DIR` reads the copy. `install-proven: files` means the stamped host version, the copied extension manifest version, and an import of that copy agree. It also prints `browser-loaded: no`, `template-installed: no`, and `whatsapp-session: not-run`. `python3 -m wake setup-check` stays the tree check and does not become true because a home directory passed this file check.
+
+Loading the unpacked extension and signing in to WhatsApp are still done in your browser. This sandbox cannot do that step. A draft your own routine types there is later live evidence. This package still does not record it, and it still does not name a path or a callback for it.
 
 ## Three results that are not the same
 

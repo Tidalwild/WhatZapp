@@ -12,6 +12,7 @@ from wake.clock import Clock, iso
 from wake.config import load_config, transmission_ready, valid_url
 from wake.envelope import build, new_event_id
 from wake.doctor import diagnose, recover, rollback_report
+from wake.hostinstall import check_main, install_main
 from wake.setupcheck import run as setup_check
 from wake.lifecycle import (
     ObserveOptions,
@@ -42,6 +43,10 @@ def main(argv=None, env=None) -> int:
     rest = args[2:]
     if command == "setup-check":
         return setup_check(source)
+    if command == "install-check":
+        return check_main(rest)
+    if command == "host-install":
+        return install_main(rest)
     if command == "doctor":
         return _doctor_command(source, rest)
     if command == "recover":
@@ -82,7 +87,7 @@ def main(argv=None, env=None) -> int:
         return permit_open_command(source, rest)
     print(
         "usage: python -m wake "
-        "[setup-check|doctor|recover|rollback|status|probe|observe|stop|resume|flush|ingest|bind|read|page|bridge|routine|permit-open]"
+        "[setup-check|install-check|host-install|doctor|recover|rollback|status|probe|observe|stop|resume|flush|ingest|bind|read|page|bridge|routine|permit-open]"
     )
     return 2
 

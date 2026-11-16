@@ -11,7 +11,8 @@ metadata envelope. It does not read a chat.
 
 1. Check the public package without a webhook call and without printing secrets:
    python3 -m wake setup-check
-   public-package-ok means the files agree and install-proven stays no.
+   public-package-ok means the files agree. install-evidence stays tree-only
+   and install-proven stays no.
    It does not mean a bot responded, and it does not mean WhatsApp is linked.
    python3 -m wake doctor
    prints the same limits without calling the webhook. Then confirm the
@@ -43,8 +44,14 @@ metadata envelope. It does not read a chat.
      --notification-key '<listener key>' --title '<exact allowlist token>'
    com.whatsapp.w4b is the other accepted package. The phone app still talks
    only to a loopback mock. This command does not change that.
-7. Continuous page-change wake. Quit Chrome, install the host, then start Chrome.
-   scripts/install-wake-bridge.sh
+7. Continuous page-change wake. Quit Chrome. Load web/dist unpacked and read
+   the extension id Chromium shows for that folder. Then:
+   scripts/install-wake-bridge.sh --extension-id '<id from that browser>'
+   python3 -m wake install-check
+   install-proven: files is the copied host and the version pair. It is not
+   a linked browser and it does not install a routine template. Run the same
+   install command again to repeat or upgrade. This removes only the host copy:
+   scripts/install-wake-bridge.sh --uninstall
    python3 -m wake bind --header 'contact-a' --self '<exact self label>'
    The extension sends only the bound row's list signal. The host posts
    only when unread goes from absent to present, matches is 1, and

@@ -80,6 +80,7 @@ def report(env: dict, root: Path | None = None) -> tuple:
         "bot-response: unproven",
         "http-2xx-means: transport-accepted",
         "install-proven: no",
+        "install-evidence: tree-only",
         "queued-means: not-covered",
         "fresh-setup: unproven",
         f"webhook: {'configured' if config.url else 'missing'}",
