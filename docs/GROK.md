@@ -26,6 +26,8 @@ A v3 wake is an event id and `observedAt`. It is not proof of a new incoming mes
 
 `examples/routine/reference_receiver.py` is a reference and test implementation of that rule. It is not installed into Grok Bot, and the extension does not run it. Copy it into the routine you operate. A change in this repository does not update a routine that is already deployed.
 
+This package has no callback that marks a bot response complete. `python3 -m wake setup-check` reports `response-interface: absent` and `response-handoff: unverified`. The evidence names are in `docs/FOUNDATION.md`. English names are the machine values. Traditional Chinese labels are display text only.
+
 ## Reply tuning
 
 Put tone, language, business hours, escalation, and extra business rules in your own files. The restaurant example under `examples/restaurant/` shows the shape. Those files are not loaded by the extension. Your routine reads them. `config/scope.example.json` is a template for the same policy shape. The extension stores its own scope, starting at `off`, and changes it only from the popup actions above. Message text cannot set it.

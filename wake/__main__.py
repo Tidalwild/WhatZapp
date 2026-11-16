@@ -11,6 +11,7 @@ from wake.client import WebhookClient
 from wake.clock import Clock, iso
 from wake.config import load_config, transmission_ready, valid_url
 from wake.envelope import build, new_event_id
+from wake.setupcheck import run as setup_check
 from wake.lifecycle import (
     ObserveOptions,
     clear_stop,
@@ -38,6 +39,8 @@ def main(argv=None, env=None) -> int:
     source = os.environ if env is None else env
     command = args[1] if len(args) > 1 else "status"
     rest = args[2:]
+    if command == "setup-check":
+        return setup_check(source)
     if command == "status":
         return status(source)
     if command == "probe":
@@ -72,7 +75,7 @@ def main(argv=None, env=None) -> int:
         return permit_open_command(source, rest)
     print(
         "usage: python -m wake "
-        "[status|probe|observe|stop|resume|flush|ingest|bind|read|page|bridge|routine|permit-open]"
+        "[setup-check|status|probe|observe|stop|resume|flush|ingest|bind|read|page|bridge|routine|permit-open]"
     )
     return 2
 

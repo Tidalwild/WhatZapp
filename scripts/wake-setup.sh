@@ -9,7 +9,11 @@ commands do not print them and do not send WhatsApp messages. A
 manual-connectivity-probe only checks that the saved routine accepts one
 metadata envelope. It does not read a chat.
 
-1. Confirm the parent environment without printing secrets:
+1. Check the public package without a webhook call and without printing secrets:
+   python3 -m wake setup-check
+   public-package-ok means the tree is consistent. It does not mean a bot
+   responded, and it does not mean WhatsApp is linked. Then confirm the
+   parent environment:
    python3 -m wake status
    auth is "value" or "normalized". sends-whatsapp stays no.
    chat-read stays no. A full "Authorization:" line in the credential is

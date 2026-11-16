@@ -24,7 +24,7 @@ Current extension version: **0.2.14**.
 
 ## Prerequisites
 
-- Python 3.9 or newer for the host and tests.
+- Python 3.10 or newer for the host and tests. The modules use runtime union types.
 - Node.js 20 or newer and npm for the extension.
 - Chrome or another Chromium browser that can load an unpacked Manifest V3 extension. CI runs Playwright Chromium on Linux. Firefox, Safari, the WhatsApp desktop app, and mobile apps are untested.
 - A WhatsApp Web session you are allowed to use. This project does not provide an account.
@@ -53,6 +53,8 @@ python3 -m wake status
 With no URL, transmission stays blocked and nothing is sent. Leave `WHATSAPP_WAKE_TRANSPORT` unset. A 2xx means the HTTP request was accepted. It does not mean a chat was read. `WHATSAPP_WAKE_WIRE=list` selects the targetless wake. Regenerating the host wrapper copies that variable into the process.
 
 `scripts/wake-setup.sh` prints the command sequence. It does not send a WhatsApp message.
+
+`python3 -m wake setup-check` reads this tree and reports the public limits. It does not call a webhook, open WhatsApp, or print a URL or credential. `result: public-package-ok` means the package is internally consistent. It does not mean a bot responded. See `docs/FOUNDATION.md`.
 
 ## Grok Bot
 
@@ -100,6 +102,7 @@ Stop, `Scope off`, and deleting the webhook credential are the revoke path. See 
 ```sh
 cd web && npm ci && npm test && npx tsc --noEmit && npm run test:browser
 python3 -m unittest discover -s tests/wake -q
+python3 -m wake setup-check
 python3 scripts/privacy_scan.py
 ```
 
