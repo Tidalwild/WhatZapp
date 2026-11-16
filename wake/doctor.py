@@ -7,18 +7,19 @@ the user's routine. It does not mean that routine cannot draft.
 """
 
 import json
+from datetime import datetime, timezone
 from pathlib import Path
 
 from wake import __version__
-from wake.bridge import read_host
+from wake.bridge import read_handshake, read_host
 from wake.config import load_config, valid_url
 from wake.evidence import CONTRACT
 from wake.recovery import (
-    PageFacts,
     apply_relink,
     binding_state,
-    connection_status,
+    disk_status,
     note_restart,
+    unlink_regular,
     unresolved_count,
 )
 from wake.scope import MODES
@@ -46,12 +47,15 @@ RUNTIME_NAMES = (
 )
 
 
-def diagnose(env: dict, store: Path, root: Path, facts: PageFacts | None = None, loaded_extension: str = "") -> tuple:
-    page = facts or PageFacts()
+def diagnose(env: dict, store: Path, root: Path, loaded_extension: str = "", restart: str = "not-run") -> tuple:
     config = load_config(env)
     host = read_host(store)
     linked = binding_state(store) == "set"
-    state, reason = connection_status(host["phase"], host.get("live") or "unverified", page, linked)
+    state, reason = disk_status(host["phase"], host.get("live") or "unverified", linked)
+    if state == "ready":
+        state, reason = "recovering", "page-not-observed"
+    if restart not in {"not-run", "kept", "unchanged", "capped", "skipped-host-live", "unreadable", "absent"}:
+        restart = "not-run"
     count = unresolved_count(store)
     extension, problem = _extension_version(root)
     if loaded_extension == "":
@@ -67,6 +71,10 @@ def diagnose(env: dict, store: Path, root: Path, facts: PageFacts | None = None,
         "package-check: tree-only",
         f"browser: {state}",
         f"browser-reason: {reason}",
+        "browser-integration: not-wired",
+        "page-observed: no",
+        f"sample-at: {_sample_at(store, host.get('live') or 'unverified')}",
+        f"restart: {restart}",
         f"receiver: {_receiver(config)}",
         "routine: external",
         "routine-response: unproven",
@@ -122,17 +130,21 @@ def rollback_report(store: Path, root: Path, loaded_extension: str = "", drop: b
     return 0, "\n".join(lines) + "\n"
 
 
-def recover(env: dict, store: Path, root: Path, *, logged_out: bool = False, identity: str = "unchecked") -> tuple:
-    """Apply a file-only restart. Disk state is never reported as ready."""
+def recover(env: dict, store: Path, root: Path, *, logged_out: bool = False, identity: str = "") -> tuple:
+    """Restart from the store. Operator flags only drop a binding.
 
-    note_restart(store)
-    if logged_out or identity == "mismatch":
+    They are not a page observation, and the report is never ready.
+    """
+
+    restart = note_restart(store)
+    operator = "none"
+    if restart != "skipped-host-live" and (logged_out or identity == "mismatch"):
         apply_relink(store)
-    phase = "logged-out" if logged_out else "absent"
-    facts = PageFacts(phase=phase, fresh=False, network="unknown", identity=identity)
-    code, text = diagnose(env, store, root, facts)
+        operator = "logged-out" if logged_out else "identity-mismatch"
+    code, text = diagnose(env, store, root, restart=restart)
     if "browser: ready\n" in text:
         return 1, "doctor: blocked\nreason: disk-cannot-be-ready\n"
+    text = text.replace("page-observed: no\n", f"page-observed: no\noperator-relink: {operator}\n", 1)
     return code, text
 
 
@@ -142,12 +154,29 @@ def drop_local_state(store: Path) -> list:
         return []
     removed = []
     for name in RUNTIME_NAMES:
-        path = directory / name
-        if path.is_symlink() or not path.is_file():
+        if "/" in name or name in {"", ".", ".."}:
             continue
-        path.unlink()
-        removed.append(name)
+        path = directory / name
+        if path.parent != directory:
+            continue
+        if unlink_regular(path):
+            removed.append(name)
     return removed
+
+
+def _sample_at(store: Path, host_live: str) -> str:
+    stamp = read_handshake(store).get("at") or "none"
+    if stamp == "none":
+        return "absent"
+    try:
+        parsed = datetime.strptime(stamp, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc).timestamp()
+    except ValueError:
+        return "invalid"
+    if parsed > datetime.now(timezone.utc).timestamp() + 120:
+        return "invalid"
+    if host_live != "yes":
+        return "stale"
+    return "not-a-page-proof"
 
 
 def _receiver(config) -> str:

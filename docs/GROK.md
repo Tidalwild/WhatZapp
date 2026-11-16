@@ -26,7 +26,7 @@ A v3 wake is an event id and `observedAt`. It is not proof of a new incoming mes
 
 `examples/routine/reference_receiver.py` is a reference and test implementation of that rule. It is not installed into Grok Bot, and the extension does not run it. Copy it into the routine you operate. A change in this repository does not update a routine that is already deployed.
 
-This package does not yet record the draft your routine produces. That is unfinished recording, not a limit on the routine. `python3 -m wake doctor` keeps three results apart: `correlation: local-transport` is only the HTTP acceptance, `routine-response: unproven` is the draft this package has not seen, and `approved-delivery: disabled` is the send gate. An HTTP 2xx is none of those completions. English names are the machine values. Traditional Chinese labels are display text only. See `docs/FOUNDATION.md`.
+This package does not record the draft your routine produces. A routine outside this repository is not that recorder, and this tree does not add a path or callback for the draft. `python3 -m wake doctor` keeps three results apart: `correlation: local-transport` is only the HTTP acceptance, `routine-response: unproven` is the draft this package has not seen, and `approved-delivery: disabled` is the send gate. An HTTP 2xx is none of those completions. English names are the machine values. Traditional Chinese labels are display text only. See `docs/FOUNDATION.md`.
 
 ## Reply tuning
 

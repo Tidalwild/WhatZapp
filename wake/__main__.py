@@ -597,12 +597,11 @@ def _recover_command(env: dict, rest: list) -> int:
             logged_out = True
             index += 1
             continue
-        choices = {"unchecked", "match", "mismatch"}
-        if token == "--identity" and index + 1 < len(rest) and rest[index + 1] in choices:
-            identity = rest[index + 1]
+        if token == "--identity" and index + 1 < len(rest) and rest[index + 1] == "mismatch":
+            identity = "mismatch"
             index += 2
             continue
-        print("usage: python -m wake recover [--logged-out] [--identity unchecked|match|mismatch]")
+        print("usage: python -m wake recover [--logged-out] [--identity mismatch]")
         return 2
     code, text = recover(env, store_path(env), _package_root(), logged_out=logged_out, identity=identity)
     print(text, end="")
